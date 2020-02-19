@@ -1,4 +1,4 @@
-package sdp
+package codec
 
 import (
     "bytes"
@@ -30,19 +30,19 @@ func (p *Packer) writeData(buf []byte) error {
     return err
 }
 
-func (p *Packer) writeHeader(tag uint32, ty uint32) error {
+func (p *Packer) WriteHeader(tag uint32, ty uint32) error {
     if tag < 15 {
         data := (ty << 4) | tag
-        return p.writeNumber32(data)
+        return p.WriteNumber32(data)
     }
     data := (ty << 4) | 0x0F
-    if err := p.writeNumber32(data); err != nil {
+    if err := p.WriteNumber32(data); err != nil {
         return err
     }
-    return p.writeNumber32(tag)
+    return p.WriteNumber32(tag)
 }
 
-func (p *Packer) writeNumber32(v uint32) error {
+func (p *Packer) WriteNumber32(v uint32) error {
     var b [5]byte
     var bs []byte
     bs = b[:]
@@ -50,7 +50,7 @@ func (p *Packer) writeNumber32(v uint32) error {
     return p.writeData(bs[0:n])
 }
 
-func (p *Packer) writeNumber64(v uint64) error {
+func (p *Packer) WriteNumber64(v uint64) error {
     var b [10]byte
     var bs []byte
     bs = b[:]
@@ -87,58 +87,58 @@ func (p *Packer) WriteInt16(tag uint32, v int16) error {
 }
 
 func (p *Packer) WriteUint32(tag uint32, v uint32) error {
-    if err := p.writeHeader(tag, SdpType_Integer_Positive); err != nil {
+    if err := p.WriteHeader(tag, SdpType_Integer_Positive); err != nil {
         return err
     }
-    return p.writeNumber32(v)
+    return p.WriteNumber32(v)
 }
 
 func (p *Packer) WriteInt32(tag uint32, v int32) error {
     if v < 0 {
-        if err := p.writeHeader(tag, SdpType_Integer_Negative); err != nil {
+        if err := p.WriteHeader(tag, SdpType_Integer_Negative); err != nil {
             return err
         }
-        return p.writeNumber32(uint32(-v))
+        return p.WriteNumber32(uint32(-v))
     }
     return p.WriteUint32(tag, uint32(v))
 }
 
 func (p *Packer) WriteUint64(tag uint32, v uint64) error {
-    if err := p.writeHeader(tag, SdpType_Integer_Positive); err != nil {
+    if err := p.WriteHeader(tag, SdpType_Integer_Positive); err != nil {
         return err
     }
-    return p.writeNumber64(v)
+    return p.WriteNumber64(v)
 }
 
 func (p *Packer) WriteInt64(tag uint32, v int64) error {
     if v < 0 {
-        if err := p.writeHeader(tag, SdpType_Integer_Negative); err != nil {
+        if err := p.WriteHeader(tag, SdpType_Integer_Negative); err != nil {
             return err
         }
-        return p.writeNumber64(uint64(-v))
+        return p.WriteNumber64(uint64(-v))
     }
     return p.WriteUint64(tag, uint64(v))
 }
 
 func (p *Packer) WriteFloat(tag uint32, v float32) error {
-    if err := p.writeHeader(tag, SdpType_Float); err != nil {
+    if err := p.WriteHeader(tag, SdpType_Float); err != nil {
         return err
     }
-    return p.writeNumber32(math.Float32bits(v));
+    return p.WriteNumber32(math.Float32bits(v));
 }
 
 func (p *Packer) WriteDouble(tag uint32, v float64) error {
-    if err := p.writeHeader(tag, SdpType_Double); err != nil {
+    if err := p.WriteHeader(tag, SdpType_Double); err != nil {
         return err
     }
-    return p.writeNumber64(math.Float64bits(v));
+    return p.WriteNumber64(math.Float64bits(v));
 }
 
 func (p *Packer) WriteString(tag uint32, v string) error {
-    if err := p.writeHeader(tag, SdpType_String); err != nil {
+    if err := p.WriteHeader(tag, SdpType_String); err != nil {
         return err
     }
-    if err := p.writeNumber32(uint32(len(v))); err != nil {
+    if err := p.WriteNumber32(uint32(len(v))); err != nil {
         return err
     }
     _, err := p.buf.WriteString(v)
@@ -168,7 +168,7 @@ func (up *UnPacker) readHeader() (n int, tag uint32, ty uint32, err error) {
     tag = uint32(data) & 0x0F
     if tag == 15 {
         n1 := 0
-        n1, tag, err = up.readNumber32()
+        n1, tag, err = up.ReadNumber32()
         if err != nil {
             up.buf.UnreadByte()
             return 0, 0, 0, err
@@ -200,7 +200,7 @@ func (up *UnPacker) skipCurField() error {
 
 func (up *UnPacker) skipVector() error {
     // 读vector长度
-    _, len, err := up.readNumber32()
+    _, len, err := up.ReadNumber32()
     if err != nil {
         return err
     }
@@ -216,7 +216,7 @@ func (up *UnPacker) skipVector() error {
 
 func (up *UnPacker) skipMap() error {
     // 读map长度
-    _, len, err := up.readNumber32()
+    _, len, err := up.ReadNumber32()
     if err != nil {
         return err
     }
@@ -233,7 +233,7 @@ func (up *UnPacker) skipMap() error {
     return nil
 }
 
-func (up *UnPacker) skipStruct() error {
+func (up *UnPacker) SkipStruct() error {
     for {
         _, _, ty, err := up.readHeader()
         if err != nil {
@@ -253,11 +253,11 @@ func (up *UnPacker) skipStruct() error {
 func (up *UnPacker) skipField(ty uint32) error {
     switch ty {
     case SdpType_Integer_Positive,SdpType_Integer_Negative,SdpType_Float,SdpType_Double:
-        if _, _, err := up.readNumber64(); err != nil {
+        if _, _, err := up.ReadNumber64(); err != nil {
             return err
         }
     case SdpType_String:
-         _, len, err := up.readNumber32()
+         _, len, err := up.ReadNumber32()
         if err != nil {
             return err
         }
@@ -273,7 +273,7 @@ func (up *UnPacker) skipField(ty uint32) error {
             return err
         }
     case SdpType_StructBegin:
-        if err := up.skipStruct(); err != nil {
+        if err := up.SkipStruct(); err != nil {
             return err
         }
     default:
@@ -282,7 +282,7 @@ func (up *UnPacker) skipField(ty uint32) error {
     return nil
 }
 
-func (up *UnPacker) skipToTag(tag uint32, require bool) (has bool, ty uint32, err error) {
+func (up *UnPacker) SkipToTag(tag uint32, require bool) (has bool, ty uint32, err error) {
     for {
         if up.buf.Len() == 0 {
             break
@@ -314,13 +314,13 @@ func (up *UnPacker) skipToTag(tag uint32, require bool) (has bool, ty uint32, er
     return false, 0, nil
 }
 
-func (up *UnPacker) readNumber32() (n int, v uint32, err error) {
+func (up *UnPacker) ReadNumber32() (n int, v uint32, err error) {
     size := up.buf.Len()
     u64, err := binary.ReadUvarint(up.buf)
     return (size-up.buf.Len()), uint32(u64), err
 }
 
-func (up *UnPacker) readNumber64() (n int, v uint64, err error) {
+func (up *UnPacker) ReadNumber64() (n int, v uint64, err error) {
     size := up.buf.Len()
     u64, err := binary.ReadUvarint(up.buf)
     return (size-up.buf.Len()), u64, err
@@ -376,7 +376,7 @@ func (up *UnPacker) ReadInt16(v *int16, tag uint32, require bool) error {
 }
 
 func (up *UnPacker) ReadUint32(v *uint32, tag uint32, require bool) error {
-    has, ty, err := up.skipToTag(tag, require)
+    has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
     }
@@ -384,7 +384,7 @@ func (up *UnPacker) ReadUint32(v *uint32, tag uint32, require bool) error {
         return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
     }
 
-    _, u32, err := up.readNumber32()
+    _, u32, err := up.ReadNumber32()
     if err != nil {
         return fmt.Errorf("tag:%d read u32 err:%s", tag, err.Error())
     }
@@ -393,7 +393,7 @@ func (up *UnPacker) ReadUint32(v *uint32, tag uint32, require bool) error {
 }
 
 func (up *UnPacker) ReadInt32(v *int32, tag uint32, require bool) error {
-    has, ty, err := up.skipToTag(tag, require)
+    has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
     }
@@ -401,7 +401,7 @@ func (up *UnPacker) ReadInt32(v *int32, tag uint32, require bool) error {
         return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
     }
 
-    _, u32, err := up.readNumber32()
+    _, u32, err := up.ReadNumber32()
     if err != nil {
         return fmt.Errorf("tag:%d read i32 err:%s", tag, err.Error())
     }
@@ -413,7 +413,7 @@ func (up *UnPacker) ReadInt32(v *int32, tag uint32, require bool) error {
 }
 
 func (up *UnPacker) ReadUint64(v *uint64, tag uint32, require bool) error {
-    has, ty, err := up.skipToTag(tag, require)
+    has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
     }
@@ -421,7 +421,7 @@ func (up *UnPacker) ReadUint64(v *uint64, tag uint32, require bool) error {
         return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
     }
 
-    _, u64, err := up.readNumber64()
+    _, u64, err := up.ReadNumber64()
     if err != nil {
         return fmt.Errorf("tag:%d read u64 err:%s", tag, err.Error())
     }
@@ -430,7 +430,7 @@ func (up *UnPacker) ReadUint64(v *uint64, tag uint32, require bool) error {
 }
 
 func (up *UnPacker) ReadInt64(v *int64, tag uint32, require bool) error {
-    has, ty, err := up.skipToTag(tag, require)
+    has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
     }
@@ -438,7 +438,7 @@ func (up *UnPacker) ReadInt64(v *int64, tag uint32, require bool) error {
         return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
     }
 
-    _, u64, err := up.readNumber64()
+    _, u64, err := up.ReadNumber64()
     if err != nil {
         return fmt.Errorf("tag:%d read i64 err:%s", tag, err.Error())
     }
@@ -450,7 +450,7 @@ func (up *UnPacker) ReadInt64(v *int64, tag uint32, require bool) error {
 }
 
 func (up *UnPacker) ReadFloat(v *float32, tag uint32, require bool) error {
-    has, ty, err := up.skipToTag(tag, require)
+    has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
     }
@@ -458,7 +458,7 @@ func (up *UnPacker) ReadFloat(v *float32, tag uint32, require bool) error {
         return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
     }
 
-    _, u32, err := up.readNumber32()
+    _, u32, err := up.ReadNumber32()
     if err != nil {
         return fmt.Errorf("tag:%d read float32 err:%s", tag, err.Error())
     }
@@ -467,7 +467,7 @@ func (up *UnPacker) ReadFloat(v *float32, tag uint32, require bool) error {
 }
 
 func (up *UnPacker) ReadDouble(v *float64, tag uint32, require bool) error {
-    has, ty, err := up.skipToTag(tag, require)
+    has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
     }
@@ -475,7 +475,7 @@ func (up *UnPacker) ReadDouble(v *float64, tag uint32, require bool) error {
         return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
     }
 
-    _, u64, err := up.readNumber64()
+    _, u64, err := up.ReadNumber64()
     if err != nil {
         return fmt.Errorf("tag:%d read float64 err:%s", tag, err.Error())
     }
@@ -484,7 +484,7 @@ func (up *UnPacker) ReadDouble(v *float64, tag uint32, require bool) error {
 }
 
 func (up *UnPacker) ReadString(v *string, tag uint32, require bool) error {
-    has, ty, err := up.skipToTag(tag, require)
+    has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
     }
@@ -492,7 +492,7 @@ func (up *UnPacker) ReadString(v *string, tag uint32, require bool) error {
         return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
     }
 
-    _, len, err := up.readNumber32()
+    _, len, err := up.ReadNumber32()
     if err != nil {
         return err
     }
