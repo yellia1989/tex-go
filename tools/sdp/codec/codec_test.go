@@ -255,12 +255,12 @@ func TestFloat(t *testing.T) {
     for tag := 0; tag <= 250; tag++ {
         for i := float32(math.SmallestNonzeroFloat32); i < math.SmallestNonzeroFloat32+100; i++ {
             packer := NewPacker()
-            err := packer.WriteFloat(uint32(tag), i)
+            err := packer.WriteFloat32(uint32(tag), i)
             if err != nil {
                 t.Error(err)
             }
             var v float32
-            err = unpacker(packer).ReadFloat(&v, uint32(tag), true)
+            err = unpacker(packer).ReadFloat32(&v, uint32(tag), true)
             if err != nil {
                 t.Error(err)
             }
@@ -270,12 +270,12 @@ func TestFloat(t *testing.T) {
         }
         for i := float32(math.MaxFloat32-100); i < math.MaxFloat32; i++ {
             packer := NewPacker()
-            err := packer.WriteFloat(uint32(tag), i)
+            err := packer.WriteFloat32(uint32(tag), i)
             if err != nil {
                 t.Error(err)
             }
             var v float32
-            err = unpacker(packer).ReadFloat(&v, uint32(tag), true)
+            err = unpacker(packer).ReadFloat32(&v, uint32(tag), true)
             if err != nil {
                 t.Error(err)
             }
@@ -291,12 +291,12 @@ func TestDouble(t *testing.T) {
     for tag := 0; tag <= 250; tag++ {
         for i := float64(math.SmallestNonzeroFloat64); i < math.SmallestNonzeroFloat64+100; i++ {
             packer := NewPacker()
-            err := packer.WriteDouble(uint32(tag), i)
+            err := packer.WriteFloat64(uint32(tag), i)
             if err != nil {
                 t.Error(err)
             }
             var v float64
-            err = unpacker(packer).ReadDouble(&v, uint32(tag), true)
+            err = unpacker(packer).ReadFloat64(&v, uint32(tag), true)
             if err != nil {
                 t.Error(err)
             }
@@ -306,12 +306,12 @@ func TestDouble(t *testing.T) {
         }
         for i := float64(math.MaxFloat64-100); i < math.MaxFloat64; i++ {
             packer := NewPacker()
-            err := packer.WriteDouble(uint32(tag), i)
+            err := packer.WriteFloat64(uint32(tag), i)
             if err != nil {
                 t.Error(err)
             }
             var v float64
-            err = unpacker(packer).ReadDouble(&v, uint32(tag), true)
+            err = unpacker(packer).ReadFloat64(&v, uint32(tag), true)
             if err != nil {
                 t.Error(err)
             }

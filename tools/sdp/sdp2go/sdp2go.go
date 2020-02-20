@@ -52,7 +52,7 @@ func (s2g *sdp2Go) Write(code string) {
 
 func (s2g *sdp2Go) generate() {
     for _, v := range s2g.p.includes {
-        _s2g := &sdp2Go{p: v}
+        _s2g := &sdp2Go{dir: s2g.dir, p: v}
         _s2g.generate()
     }
 
@@ -202,7 +202,7 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
     s2g.Write("}")
 
     // 默认值
-    s2g.Write("func (st *" + st.name + ") resetDefault(){")
+    s2g.Write("func (st *" + st.name + ") ResetDefault(){")
     for _, v := range st.members {
         if v.defVal == "" {
             continue
@@ -217,7 +217,7 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
         var length uint32
         var has bool
         var ty uint32
-        st.resetDefault()`)
+        st.ResetDefault()`)
     for _, v := range st.members {
         s2g.genReadVar(&v, "st.", false)
     }
@@ -232,7 +232,7 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
     var err error
     var has bool
     var ty uint32
-    st.resetDefault()
+    st.ResetDefault()
     
     has, ty, err = up.SkipToTag(tag, require)
     if !has || err != nil {
@@ -308,17 +308,29 @@ func (s2g *sdp2Go) genWriteVar(v *structMember, prefix string, checkRet bool) {
     case tkTMap:
         s2g.genWriteMap(v, prefix, checkRet)
     case tkName:
-        if v.ty.ty == tkEnum {
+        if v.ty.customTy == tkEnum {
             tag := strconv.Itoa(int(v.tag))
+            if v.defVal != "" {
+                s2g.Write("if " + prefix+v.name + " != " + v.defVal + " {")
+            }
             s2g.Write("err = p.WriteInt32(" + tag + ", int32(" + prefix + v.name + "))")
             s2g.Write(genCheckErr(checkRet))
+            if v.defVal != "" {
+                s2g.Write("}")
+            }
         } else {
             s2g.genWriteStruct(v, prefix, checkRet)
         }
     default:
         tag := strconv.Itoa(int(v.tag))
+        if v.defVal != "" {
+            s2g.Write("if " + prefix+v.name + " != " + v.defVal + " {")
+        }
         s2g.Write("err = p.Write" + upperFirstLetter(s2g.genType(v.ty)) + "(" + tag + ", " + prefix + v.name + ")")
         s2g.Write(genCheckErr(checkRet))
+        if v.defVal != "" {
+            s2g.Write("}")
+        }
     }
 }
 
@@ -329,7 +341,7 @@ func (s2g *sdp2Go) genReadVar(v *structMember, prefix string, checkRet bool) {
     case tkTMap:
         s2g.genReadMap(v, prefix, checkRet)
     case tkName:
-        if v.ty.ty == tkEnum {
+        if v.ty.customTy == tkEnum {
             tag := strconv.Itoa(int(v.tag))
             require := "false"
             if v.require {

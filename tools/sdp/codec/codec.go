@@ -120,14 +120,14 @@ func (p *Packer) WriteInt64(tag uint32, v int64) error {
     return p.WriteUint64(tag, uint64(v))
 }
 
-func (p *Packer) WriteFloat(tag uint32, v float32) error {
+func (p *Packer) WriteFloat32(tag uint32, v float32) error {
     if err := p.WriteHeader(tag, SdpType_Float); err != nil {
         return err
     }
     return p.WriteNumber32(math.Float32bits(v));
 }
 
-func (p *Packer) WriteDouble(tag uint32, v float64) error {
+func (p *Packer) WriteFloat64(tag uint32, v float64) error {
     if err := p.WriteHeader(tag, SdpType_Double); err != nil {
         return err
     }
@@ -151,6 +151,10 @@ func (p *Packer) ToBytes() []byte {
 
 func (p *Packer) Grow(n int) {
     p.buf.Grow(n)
+}
+
+func (p *Packer) Reset() {
+    p.buf.Reset()
 }
 
 type UnPacker struct {
@@ -449,7 +453,7 @@ func (up *UnPacker) ReadInt64(v *int64, tag uint32, require bool) error {
     return err
 }
 
-func (up *UnPacker) ReadFloat(v *float32, tag uint32, require bool) error {
+func (up *UnPacker) ReadFloat32(v *float32, tag uint32, require bool) error {
     has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
@@ -466,7 +470,7 @@ func (up *UnPacker) ReadFloat(v *float32, tag uint32, require bool) error {
     return err
 }
 
-func (up *UnPacker) ReadDouble(v *float64, tag uint32, require bool) error {
+func (up *UnPacker) ReadFloat64(v *float64, tag uint32, require bool) error {
     has, ty, err := up.SkipToTag(tag, require)
     if !has || err != nil {
         return err
@@ -496,6 +500,9 @@ func (up *UnPacker) ReadString(v *string, tag uint32, require bool) error {
     if err != nil {
         return err
     }
+    if len == 0 {
+        return nil
+    }
     if up.buf.Len() < int(len) {
         return fmt.Errorf("tag:%d end of data", tag)
     }
@@ -505,6 +512,10 @@ func (up *UnPacker) ReadString(v *string, tag uint32, require bool) error {
     }
     *v = string(bs)
     return err
+}
+
+func (up *UnPacker) Reset(buf []byte) {
+    up.buf.Reset(buf)
 }
 
 func NewPacker() *Packer {

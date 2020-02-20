@@ -1,0 +1,17 @@
+#include "test2.sdp"
+
+module test
+{
+    struct requireStruct {
+        0   require test2::simpleStruct ss;
+    };
+
+    struct defaultStruct {
+        0   optional bool b = true;
+        1   optional byte by = 1;
+        2   optional short s = 10;
+        3   optional int i = 1;
+        4   optional long l = 0x0FFFFFFFFFFFFFFF;
+        5   optional string ss = "yellia";
+    };
+};
