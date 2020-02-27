@@ -17,7 +17,7 @@ func TestLogger(t *testing.T) {
 	longmsg := string(bs)
 	for i := 0; i < 10; i++ {
 		lg.Debugf("debugxxxxxxxxxxxxxxxxxxxxxxxxxxx:%d",i+1)
-		lg.Infof("%s:%d", longmsg, i+1)
+		lg.Infof(":%s:%d", longmsg, i+1)
 		//lg.Warn("warn")
 		//lg.Error("ERROR")
 		//time.Sleep(time.Second)

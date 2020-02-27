@@ -3,7 +3,8 @@ package net
 import (
     "testing"
     "time"
-    _ "github.com/yellia1989/tex-go/tools/log"
+    "net"
+    "github.com/yellia1989/tex-go/tools/log"
 )
 
 type EchoHandle struct {
@@ -21,7 +22,7 @@ func (s *EchoHandle) HandleTimeout(pkg []byte) []byte {
     return pkg
 }
 
-func TestSvrRun(t *testing.T) {
+func TestSvr(t *testing.T) {
     cfg := &SvrCfg{
         Proto: "tcp",
         Address: ":8888",
@@ -38,16 +39,47 @@ func TestSvrRun(t *testing.T) {
     if err != nil {
         t.Fatalf("create svr err:%s", err)
     }
+
+    start := make(chan struct{})
     stop := make(chan struct{})
     go func() {
+        start <- struct{}{}
         svr.Run()
         stop <- struct{}{}
     }()
-    select {
-        case <-time.After(time.Second * 10):
-            svr.Stop()
+    // 等待服务器启动成功
+    <-start
+
+    for i := 0; i < 100; i++ {
+        t.Run("accept new connection", func (t *testing.T) {
+            addr, err := net.ResolveTCPAddr("tcp", ":8888")
+            if err != nil {
+                t.Fatalf("dial error:%s", err)
+            }
+            conn, err := net.DialTCP("tcp", nil, addr)
+            if err != nil {
+                t.Fatalf("dial error:%s", err)
+            }
+
+            hello := []byte("hello")
+            n, err := conn.Write(hello)
+            if err != nil {
+                t.Fatalf("write error:%s", err)
+            }
+
+            buf := make([]byte, n)
+            n2, err := conn.Read(buf)
+            if err != nil {
+                t.Fatalf("read error:%s", err)
+            }
+            if n != n2 || string(buf) != string(hello) {
+                t.Fatalf("write:%s vs read:%s", string(hello), string(buf))
+            }
+        })
     }
 
+    // 等待服务器结束
+    svr.Stop()
     <-stop
-    //log.FlushLogger()
+    log.FlushLogger()
 }

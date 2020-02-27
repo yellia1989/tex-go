@@ -68,22 +68,20 @@ func (c *Conn) Send(pkg []byte) {
 }
 
 func (c *Conn) SafeClose() {
-    if c.close {
-        return
-    }
-    c.close = true
-
     pkg := make([]byte,0)
     c.writech <- pkg
 }
 
 func (c *Conn) Close() {
-    c.close = true
+    if c.close {
+        return
+    }
     if err := c.conn.Close(); err != nil {
         return
     }
 
     c.svr.delConnection(c.ID)
+    c.close = true
 }
 
 func (c *Conn) doRead() {
@@ -91,7 +89,7 @@ func (c *Conn) doRead() {
 
     tmpbuf := make([]byte, 1024*4)
     var pkgbuf []byte
-    for c.svr.close {
+    for !c.svr.close {
         n, err := c.conn.Read(tmpbuf)
         if err != nil {
             if (err == io.EOF) {
@@ -109,10 +107,9 @@ func (c *Conn) doRead() {
                 break
             }
             if status == PACKAGE_FULL {
-                pkg := make([]byte, pkglen-4)
-                copy(pkg, pkgbuf[4:pkglen])
-                pkgbuf = pkgbuf[pkglen:]
+                pkg := pkgbuf[:pkglen]
                 c.recvPkg(pkg)
+                pkgbuf = pkgbuf[pkglen:]
                 if len(pkgbuf) > 0 {
                     continue
                 }
@@ -141,11 +138,15 @@ func (c *Conn) doWrite() {
     for {
         select {
         case pkg := <-c.writech :
-            // SafeClose
-            if len(pkg) == 0 {
+            if c.svr.close {
+                // 未发完的包丢弃
                 return
             }
             total := len(pkg)
+            if total == 0 {
+                // 优雅关闭
+                return
+            }
             for {
                 n, err := c.conn.Write(pkg)
                 if err != nil {
@@ -208,12 +209,6 @@ func (s *Svr) Run() {
     // 停止工作协程
     s.workPool.Release()
 
-    // 关闭所有的连接
-    s.conns.Range(func (k, v interface{}) bool {
-        v.(*Conn).SafeClose()
-        return true
-    })
-
     log.Debug("svr stop")
 }
 
@@ -226,6 +221,14 @@ func (s *Svr) delConnection(id uint32) {
     log.Debugf("conn:%d is closed", id)
 }
 
+func (s *Svr) CloseConnection(id uint32) {
+    conn, ok := s.conns.Load(id)
+    if !ok {
+        return
+    }
+    conn.(*Conn).SafeClose()
+}
+
 func (s *Svr) addConnection(c net.Conn) {
     id := atomic.AddUint32(&s.id, 1)
     conn := &Conn{ID: id, conn: c, close: false, svr: s}
@@ -236,7 +239,7 @@ func (s *Svr) addConnection(c net.Conn) {
     conn.writech = make(chan []byte, 10)
 
     _, ok := s.conns.LoadOrStore(id, conn)
-    if ok == false {
+    if ok {
         panic("add new conn failed, id:" + strconv.Itoa(int(id)))
     }
 
@@ -244,7 +247,7 @@ func (s *Svr) addConnection(c net.Conn) {
     go conn.doRead()
     go conn.doWrite()
 
-    log.Debugf("accept conn:%d %s", id, c.RemoteAddr())
+    log.Debugf("accept conn:%d remote addr:%s", conn.ID, c.RemoteAddr())
 }
 
 func (s *Svr) Send(id uint32, pkg []byte) {
@@ -283,3 +286,4 @@ func (s *Svr) recvPkg(recvTime time.Time, pkg []byte) []byte {
     }
     return rsp
 }
+

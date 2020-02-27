@@ -274,26 +274,26 @@ func GetDefaultLogger() *Logger {
     return defaultLogger
 }
 func Debugf(format string, v ...interface{}) {
-	defaultLogger.Debugf(format, v)
+	defaultLogger.writef(DEBUG, format, v)
 }
 func Infof(format string, v ...interface{}) {
-	defaultLogger.Infof(format, v)
+	defaultLogger.writef(INFO, format, v)
 }
 func Warnf(format string, v ...interface{}) {
-	defaultLogger.Warnf(format, v)
+	defaultLogger.writef(WARN, format, v)
 }
 func Errorf(format string, v ...interface{}) {
-	defaultLogger.Errorf(format, v)
+	defaultLogger.writef(ERROR, format, v)
 }
 func Debug(v ...interface{}) {
-	defaultLogger.Debug(v)
+	defaultLogger.writef(DEBUG, "", v)
 }
 func Info(v ...interface{}) {
-	defaultLogger.Info(v)
+	defaultLogger.writef(INFO, "", v)
 }
 func Warn(v ...interface{}) {
-	defaultLogger.Warn(v)
+	defaultLogger.writef(WARN, "", v)
 }
 func Error(v ...interface{}) {
-	defaultLogger.Error(v)
+	defaultLogger.writef(ERROR, "", v)
 }
