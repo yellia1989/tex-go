@@ -35,6 +35,8 @@ func TestSvr(t *testing.T) {
         TCPNoDelay: true,
     }
 
+    log.SetFrameworkLevel(log.DEBUG)
+
     svr, err := NewSvr(cfg, &EchoHandle{})
     if err != nil {
         t.Fatalf("create svr err:%s", err)

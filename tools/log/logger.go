@@ -20,6 +20,7 @@ const (
 
 var (
 	logLevel = DEBUG
+    framework_logLevel = INFO
 
 	logQueue  = make(chan *logValue, 10000)
 	loggerMap = make(map[string]*Logger)
@@ -57,9 +58,12 @@ func init() {
     defaultLogger = GetLogger("AB0D2927-C7EF-4E17-AB72-938D027B0D08")
 
 	go func() {
+        defer func() {
+		    if err := recover(); err != nil {
+                // avoid timer panic
+		    }
+        }()
 		tm := time.NewTimer(time.Second)
-		if err := recover(); err != nil { // avoid timer panic
-		}
 		for {
 			now := time.Now()
 			d := time.Second - time.Duration(now.Nanosecond())
@@ -117,6 +121,10 @@ func GetLogger(name string) *Logger {
 //SetLevel sets the log level
 func SetLevel(level LogLevel) {
 	logLevel = level
+}
+
+func SetFrameworkLevel(level LogLevel) {
+	framework_logLevel = level
 }
 
 //StringToLevel turns string to LogLevel
@@ -190,46 +198,49 @@ func (l *Logger) SetConsole() {
 
 //Debug logs interface in debug loglevel.
 func (l *Logger) Debug(v ...interface{}) {
-	l.writef(DEBUG, "", v)
+	l.writef(false, DEBUG, "", v)
 }
 
 //Info logs interface in Info loglevel.
 func (l *Logger) Info(v ...interface{}) {
-	l.writef(INFO, "", v)
+	l.writef(false, INFO, "", v)
 }
 
 //Warn logs interface in warning loglevel
 func (l *Logger) Warn(v ...interface{}) {
-	l.writef(WARN, "", v)
+	l.writef(false, WARN, "", v)
 }
 
 //Error logs interface in Error loglevel
 func (l *Logger) Error(v ...interface{}) {
-	l.writef(ERROR, "", v)
+	l.writef(false, ERROR, "", v)
 }
 
 //Debugf logs interface in debug loglevel with formating string
 func (l *Logger) Debugf(format string, v ...interface{}) {
-	l.writef(DEBUG, format, v)
+	l.writef(false, DEBUG, format, v)
 }
 
 //Infof logs interface in Infof loglevel with formating string
 func (l *Logger) Infof(format string, v ...interface{}) {
-	l.writef(INFO, format, v)
+	l.writef(false, INFO, format, v)
 }
 
 //Warnf logs interface in warning loglevel with formating string
 func (l *Logger) Warnf(format string, v ...interface{}) {
-	l.writef(WARN, format, v)
+	l.writef(false, WARN, format, v)
 }
 
 //Errorf logs interface in Error loglevel with formating string
 func (l *Logger) Errorf(format string, v ...interface{}) {
-	l.writef(ERROR, format, v)
+	l.writef(false, ERROR, format, v)
 }
 
-func (l *Logger) writef(level LogLevel, format string, v []interface{}) {
-	if level < logLevel {
+func (l *Logger) writef(framework bool, level LogLevel, format string, v []interface{}) {
+	if framework && level < framework_logLevel {
+		return
+	}
+	if !framework && level < logLevel {
 		return
 	}
 
@@ -246,6 +257,10 @@ func (l *Logger) writef(level LogLevel, format string, v []interface{}) {
 			}
 			fmt.Fprintf(buf, "%s:%d|", file, line)
 		}
+
+        if framework {
+            buf.WriteString("[framework]|")
+        }
 
 		buf.WriteString(level.String())
 		buf.WriteByte('|')
@@ -274,26 +289,50 @@ func GetDefaultLogger() *Logger {
     return defaultLogger
 }
 func Debugf(format string, v ...interface{}) {
-	defaultLogger.writef(DEBUG, format, v)
+	defaultLogger.writef(false, DEBUG, format, v)
 }
 func Infof(format string, v ...interface{}) {
-	defaultLogger.writef(INFO, format, v)
+	defaultLogger.writef(false, INFO, format, v)
 }
 func Warnf(format string, v ...interface{}) {
-	defaultLogger.writef(WARN, format, v)
+	defaultLogger.writef(false, WARN, format, v)
 }
 func Errorf(format string, v ...interface{}) {
-	defaultLogger.writef(ERROR, format, v)
+	defaultLogger.writef(false, ERROR, format, v)
 }
 func Debug(v ...interface{}) {
-	defaultLogger.writef(DEBUG, "", v)
+	defaultLogger.writef(false, DEBUG, "", v)
 }
 func Info(v ...interface{}) {
-	defaultLogger.writef(INFO, "", v)
+	defaultLogger.writef(false, INFO, "", v)
 }
 func Warn(v ...interface{}) {
-	defaultLogger.writef(WARN, "", v)
+	defaultLogger.writef(false, WARN, "", v)
 }
 func Error(v ...interface{}) {
-	defaultLogger.writef(ERROR, "", v)
+	defaultLogger.writef(false, ERROR, "", v)
+}
+func FDebugf(format string, v ...interface{}) {
+	defaultLogger.writef(true, DEBUG, format, v)
+}
+func FInfof(format string, v ...interface{}) {
+	defaultLogger.writef(true, INFO, format, v)
+}
+func FWarnf(format string, v ...interface{}) {
+	defaultLogger.writef(true, WARN, format, v)
+}
+func FErrorf(format string, v ...interface{}) {
+	defaultLogger.writef(true, ERROR, format, v)
+}
+func FDebug(v ...interface{}) {
+	defaultLogger.writef(true, DEBUG, "", v)
+}
+func FInfo(v ...interface{}) {
+	defaultLogger.writef(true, INFO, "", v)
+}
+func FWarn(v ...interface{}) {
+	defaultLogger.writef(true, WARN, "", v)
+}
+func FError(v ...interface{}) {
+	defaultLogger.writef(true, ERROR, "", v)
 }

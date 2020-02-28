@@ -6,6 +6,7 @@ import (
     "time"
     "net"
     "io"
+    "fmt"
     "strconv"
     "github.com/yellia1989/tex-go/tools/rtimer"
     "github.com/yellia1989/tex-go/tools/gpool"
@@ -16,6 +17,11 @@ const (
     PACKAGE_LESS = iota
     PACKAGE_FULL
     PACKAGE_ERROR
+)
+
+const (
+    write_timeout = time.Millisecond * 10
+    write_queuecap = 10
 )
 
 // 服务器接收到数据包的处理接口
@@ -35,14 +41,17 @@ type netHandle interface {
 
 // 服务器配置
 type SvrCfg struct {
-    Proto string // tcp,udp 
+    Proto string // tcp,udp
     Address string // listen address
 
     WorkThread int // 包处理协程个数
     WorkQueueCap int // 包处理队列长度
-    MaxConn        int
+    MaxConn        int // 最大连接数
+    WriteQueueCap  int // 每个连接的待发送队列的长度
+    WriteTimeout   time.Duration
 
     HandleTimeout  time.Duration
+    IdleTimeout    time.Duration
 
     TCPReadBuffer  int
     TCPWriteBuffer int
@@ -58,34 +67,60 @@ type Conn struct {
 
     close bool // 连接关闭
     writech chan []byte // 写通道
+    done sync.WaitGroup // 等待连接读写关闭
 }
 
-func (c *Conn) Send(pkg []byte) {
-    if c.close || len(pkg) == 0 {
-        return
+func (c *Conn) Send(pkg []byte) error {
+    if len(pkg) == 0 {
+        return fmt.Errorf("empty packet")
     }
-    c.writech <- pkg
+
+    if c.close {
+        return fmt.Errorf("conn has been closed")
+    }
+
+    // writech的大小应该根据下面情况综合考虑来设置
+    // 1. 发包频率
+    // 2. 收包频率
+    done := make(chan struct{})
+    go func() {
+        defer func() {
+            if err := recover(); err != nil {
+                // 防止往已经关闭的ch写数据导致的crash
+                done <- struct{}{}
+            }
+        }()
+        c.writech <- pkg
+        done <- struct{}{}
+    }()
+
+    select {
+        case <-rtimer.After(c.svr.cfg.WriteTimeout):
+            return fmt.Errorf("send packet timeout")
+        case <-done:
+    }
+
+    return nil
 }
 
 func (c *Conn) SafeClose() {
-    pkg := make([]byte,0)
-    c.writech <- pkg
+    close(c.writech)
 }
 
 func (c *Conn) Close() {
     if c.close {
         return
     }
-    if err := c.conn.Close(); err != nil {
-        return
-    }
-
-    c.svr.delConnection(c.ID)
     c.close = true
+    c.conn.Close()
+    close(c.writech)
 }
 
 func (c *Conn) doRead() {
-    defer c.Close()
+    defer func() {
+        c.Close()
+        c.done.Done()
+    }()
 
     tmpbuf := make([]byte, 1024*4)
     var pkgbuf []byte
@@ -93,9 +128,9 @@ func (c *Conn) doRead() {
         n, err := c.conn.Read(tmpbuf)
         if err != nil {
             if (err == io.EOF) {
-                log.Debugf("conn:%d client closed connection:%s", c.ID, err.Error())
+                log.FDebugf("conn:%d client closed connection:%s", c.ID, err.Error())
             } else {
-                log.Errorf("conn:%d read err:%s", c.ID, err.Error())
+                log.FErrorf("conn:%d read err:%s", c.ID, err.Error())
             }
             return
         }
@@ -116,7 +151,7 @@ func (c *Conn) doRead() {
                 pkgbuf = nil
                 break
             }
-            log.Errorf("conn:%d parse package error", c.ID)
+            log.FErrorf("conn:%d parse package error", c.ID)
             return
         }
     }
@@ -133,24 +168,23 @@ func (c *Conn) recvPkg(pkg []byte) {
 }
 
 func (c *Conn) doWrite() {
-    defer c.Close()
+    defer func() {
+        c.Close()
+        c.done.Done()
+    }()
 
     for {
         select {
-        case pkg := <-c.writech :
-            if c.svr.close {
-                // 未发完的包丢弃
-                return
-            }
-            total := len(pkg)
-            if total == 0 {
+        case pkg, ok := <-c.writech :
+            if !ok {
                 // 优雅关闭
                 return
             }
+            total := len(pkg)
             for {
                 n, err := c.conn.Write(pkg)
                 if err != nil {
-                    log.Errorf("conn:%d write err:%s", c.ID, err.Error())
+                    log.FErrorf("conn:%d write err:%s", c.ID, err.Error())
                     return
                 }
                 if n > 0 {
@@ -179,6 +213,13 @@ type Svr struct {
 }
 
 func NewSvr(cfg *SvrCfg, pkgHandle PackageHandle) (*Svr, error) {
+    if cfg.WriteQueueCap <= write_queuecap {
+        cfg.WriteQueueCap = write_queuecap
+    }
+    if cfg.WriteTimeout <= write_timeout {
+        cfg.WriteTimeout = write_timeout
+    }
+
     s := &Svr{cfg: cfg, pkgHandle: pkgHandle, close: false}
 
     if s.cfg.Proto == "tcp" {
@@ -193,7 +234,7 @@ func NewSvr(cfg *SvrCfg, pkgHandle PackageHandle) (*Svr, error) {
 }
 
 func (s *Svr) Run() {
-    log.Debug("start server")
+    log.FDebug("start server")
 
     // 开启工作协程
     s.workPool = gpool.NewPool(s.cfg.WorkThread, s.cfg.WorkQueueCap)
@@ -209,7 +250,7 @@ func (s *Svr) Run() {
     // 停止工作协程
     s.workPool.Release()
 
-    log.Debug("svr stop")
+    log.FDebug("svr stop")
 }
 
 func (s *Svr) Stop() {
@@ -218,7 +259,7 @@ func (s *Svr) Stop() {
 
 func (s *Svr) delConnection(id uint32) {
     s.conns.Delete(id)
-    log.Debugf("conn:%d is closed", id)
+    log.FDebugf("conn:%d is deleted", id)
 }
 
 func (s *Svr) CloseConnection(id uint32) {
@@ -236,18 +277,25 @@ func (s *Svr) addConnection(c net.Conn) {
     _, conn.IsTcp = c.(*net.TCPConn)
 
     // writech的大小决定了conn调用write时是否阻塞
-    conn.writech = make(chan []byte, 10)
+    conn.writech = make(chan []byte, s.cfg.WriteQueueCap)
 
     _, ok := s.conns.LoadOrStore(id, conn)
     if ok {
         panic("add new conn failed, id:" + strconv.Itoa(int(id)))
     }
 
+    // 等待连接关闭
+    conn.done.Add(2)
+    go func() {
+        conn.done.Wait()
+        s.delConnection(id)
+    }()
+
     // 开启读写协程
     go conn.doRead()
     go conn.doWrite()
 
-    log.Debugf("accept conn:%d remote addr:%s", conn.ID, c.RemoteAddr())
+    log.FDebugf("accept conn:%d remote addr:%s", conn.ID, c.RemoteAddr())
 }
 
 func (s *Svr) Send(id uint32, pkg []byte) {

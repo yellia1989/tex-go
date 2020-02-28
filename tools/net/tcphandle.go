@@ -21,26 +21,26 @@ func (h *tcpHandle) Run() {
     cfg := h.svr.cfg
     addr, err := net.ResolveTCPAddr("tcp4", cfg.Address)
     if err != nil {
-        log.Errorf("listen on %s failed", cfg.Address)
+        log.FErrorf("listen on %s failed", cfg.Address)
         return
     }
     h.lis, err = net.ListenTCP("tcp4", addr)
     if err != nil {
-        log.Errorf("listen on %s failed", cfg.Address)
+        log.FErrorf("listen on %s failed", cfg.Address)
         return
     }
-    log.Debugf("start listen on:%s", addr)
+    log.FDebugf("start listen on:%s", addr)
 
     for !h.svr.close {
         if err := h.lis.SetDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
-            log.Errorf("set accept timeout failed:%s", err.Error())
+            log.FErrorf("set accept timeout failed:%s", err.Error())
             return
         }
         conn, err := h.lis.AcceptTCP()
         if err != nil {
             if isTimeoutErr(err) {
             } else {
-                log.Errorf("accept error:%s", err.Error())    
+                log.FErrorf("accept error:%s", err.Error())    
             }
             continue
         }
@@ -51,5 +51,5 @@ func (h *tcpHandle) Run() {
         h.svr.addConnection(conn)
     }
 
-    log.Debugf("stop listen on:%s", addr)
+    log.FDebugf("stop listen on:%s", addr)
 }
