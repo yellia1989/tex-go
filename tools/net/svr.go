@@ -142,7 +142,8 @@ func (c *Conn) doRead() {
                 break
             }
             if status == PACKAGE_FULL {
-                pkg := pkgbuf[:pkglen]
+                pkg := make([]byte, pkglen)
+                copy(pkg, pkgbuf[:pkglen])
                 c.recvPkg(pkg)
                 pkgbuf = pkgbuf[pkglen:]
                 if len(pkgbuf) > 0 {
