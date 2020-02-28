@@ -210,6 +210,8 @@ type Svr struct {
     id uint32 // conn auto incr id
 
     workPool *gpool.Pool // 工作线程
+
+    connNum int32 // 当前连接数
 }
 
 func NewSvr(cfg *SvrCfg, pkgHandle PackageHandle) (*Svr, error) {
@@ -259,6 +261,7 @@ func (s *Svr) Stop() {
 
 func (s *Svr) delConnection(id uint32) {
     s.conns.Delete(id)
+    atomic.AddInt32(&s.connNum, -1)
     log.FDebugf("conn:%d is deleted", id)
 }
 
@@ -271,6 +274,14 @@ func (s *Svr) CloseConnection(id uint32) {
 }
 
 func (s *Svr) addConnection(c net.Conn) {
+
+    if s.connNum >= int32(s.cfg.MaxConn) {
+        // 超过了最大连接数,直接关闭连接
+        c.Close()
+        log.FErrorf("exceed max conn:%d, cur:%d", s.cfg.MaxConn, s.connNum)
+        return
+    }
+
     id := atomic.AddUint32(&s.id, 1)
     conn := &Conn{ID: id, conn: c, close: false, svr: s}
 
@@ -283,6 +294,7 @@ func (s *Svr) addConnection(c net.Conn) {
     if ok {
         panic("add new conn failed, id:" + strconv.Itoa(int(id)))
     }
+    atomic.AddInt32(&s.connNum, 1)
 
     // 等待连接关闭
     conn.done.Add(2)

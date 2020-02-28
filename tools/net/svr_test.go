@@ -28,7 +28,7 @@ func TestSvr(t *testing.T) {
         Address: ":8888",
         WorkThread: 1,
         WorkQueueCap: 10000,
-        MaxConn: 10000,
+        MaxConn: 1000,
         HandleTimeout: 0 * time.Second,
         TCPReadBuffer: 128*1024*1204,
         TCPWriteBuffer: 128*1024*1024,
