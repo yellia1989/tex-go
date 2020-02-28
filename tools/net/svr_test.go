@@ -2,7 +2,6 @@ package net
 
 import (
     "testing"
-    "time"
     "net"
     "github.com/yellia1989/tex-go/tools/log"
 )
@@ -29,7 +28,6 @@ func TestSvr(t *testing.T) {
         WorkThread: 1,
         WorkQueueCap: 10000,
         MaxConn: 1000,
-        HandleTimeout: 0 * time.Second,
         TCPReadBuffer: 128*1024*1204,
         TCPWriteBuffer: 128*1024*1024,
         TCPNoDelay: true,

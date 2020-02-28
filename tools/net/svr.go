@@ -68,6 +68,8 @@ type Conn struct {
     close bool // 连接关闭
     writech chan []byte // 写通道
     done sync.WaitGroup // 等待连接读写关闭
+
+    idleTime time.Time // 最后一次活跃时间点
 }
 
 func (c *Conn) Send(pkg []byte) error {
@@ -122,11 +124,27 @@ func (c *Conn) doRead() {
         c.done.Done()
     }()
 
+    c.idleTime = time.Now()
     tmpbuf := make([]byte, 1024*4)
     var pkgbuf []byte
     for !c.svr.close {
+        if c.svr.cfg.IdleTimeout != 0 {
+            if err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
+                log.FErrorf("conn:%d set read timeout err:%s", err.Error())
+                return
+            }
+        }
         n, err := c.conn.Read(tmpbuf)
         if err != nil {
+            if isTimeoutErr(err) {
+                // 不活跃直接关闭
+                if c.idleTime.Add(c.svr.cfg.IdleTimeout).Before(time.Now()) {
+                    log.FDebugf("conn:%d is unactive, will be closed", c.ID)
+                    return
+                }
+                c.idleTime = time.Now()
+                continue
+            }
             if (err == io.EOF) {
                 log.FDebugf("conn:%d client closed connection:%s", c.ID, err.Error())
             } else {
