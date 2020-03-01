@@ -136,7 +136,7 @@ func (c *Conn) doRead() {
         }
         n, err := c.conn.Read(tmpbuf)
         if err != nil {
-            if isTimeoutErr(err) {
+            if isTimeoutErr(err) && c.svr.cfg.IdleTimeout != 0 {
                 // 不活跃直接关闭
                 if c.idleTime.Add(c.svr.cfg.IdleTimeout).Before(time.Now()) {
                     log.FDebugf("conn:%d is unactive, will be closed", c.ID)
@@ -281,7 +281,7 @@ func (s *Svr) Stop() {
 func (s *Svr) delConnection(id uint32) {
     s.conns.Delete(id)
     atomic.AddInt32(&s.connNum, -1)
-    log.FDebugf("conn:%d is deleted", id)
+    log.FDebugf("delete conn:%d", id)
 }
 
 func (s *Svr) CloseConnection(id uint32) {
@@ -293,7 +293,6 @@ func (s *Svr) CloseConnection(id uint32) {
 }
 
 func (s *Svr) addConnection(c net.Conn) {
-
     if s.connNum >= int32(s.cfg.MaxConn) {
         // 超过了最大连接数,直接关闭连接
         c.Close()

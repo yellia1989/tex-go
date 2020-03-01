@@ -3,6 +3,8 @@ package net
 import (
     "testing"
     "net"
+    "sync"
+    "time"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
@@ -26,10 +28,10 @@ func TestSvr(t *testing.T) {
         Proto: "tcp",
         Address: ":8888",
         WorkThread: 1,
-        WorkQueueCap: 10000,
+        WorkQueueCap: 1000,
         MaxConn: 1000,
-        TCPReadBuffer: 128*1024*1204,
-        TCPWriteBuffer: 128*1024*1024,
+        TCPReadBuffer: 128*1204,
+        TCPWriteBuffer: 128*1024,
         TCPNoDelay: true,
     }
 
@@ -40,18 +42,52 @@ func TestSvr(t *testing.T) {
         t.Fatalf("create svr err:%s", err)
     }
 
-    start := make(chan struct{})
-    stop := make(chan struct{})
+    stop := make(chan bool)
     go func() {
-        start <- struct{}{}
         svr.Run()
-        stop <- struct{}{}
+        stop <- true
     }()
     // 等待服务器启动成功
-    <-start
+    time.Sleep(time.Second*2)
+
+    var stopSvr sync.WaitGroup
+    stopSvr.Add(101)
 
     for i := 0; i < 100; i++ {
-        t.Run("accept new connection", func (t *testing.T) {
+        // 之所以开启携程是模拟10个客户端并发连接
+        go func() {
+            t.Run("accept new connection", func (t *testing.T) {
+                addr, err := net.ResolveTCPAddr("tcp", ":8888")
+                if err != nil {
+                    t.Fatalf("dial error:%s", err)
+                }
+                conn, err := net.DialTCP("tcp", nil, addr)
+                if err != nil {
+                    t.Fatalf("dial error:%s", err)
+                }
+
+                hello := []byte("hello")
+                n, err := conn.Write(hello)
+                if err != nil {
+                    t.Fatalf("write error:%s", err)
+                }
+
+                buf := make([]byte, n)
+                n2, err := conn.Read(buf)
+                if err != nil {
+                    t.Fatalf("read error:%s", err)
+                }
+                if n != n2 || string(buf) != string(hello) {
+                    t.Fatalf("write:%s vs read:%s", string(hello), string(buf))
+                }
+                conn.Close()
+            })
+            stopSvr.Done()
+        } ()
+    }
+
+    go func() {
+        t.Run("closeconnection", func (t *testing.T) {
             addr, err := net.ResolveTCPAddr("tcp", ":8888")
             if err != nil {
                 t.Fatalf("dial error:%s", err)
@@ -61,23 +97,12 @@ func TestSvr(t *testing.T) {
                 t.Fatalf("dial error:%s", err)
             }
 
-            hello := []byte("hello")
-            n, err := conn.Write(hello)
-            if err != nil {
-                t.Fatalf("write error:%s", err)
-            }
-
-            buf := make([]byte, n)
-            n2, err := conn.Read(buf)
-            if err != nil {
-                t.Fatalf("read error:%s", err)
-            }
-            if n != n2 || string(buf) != string(hello) {
-                t.Fatalf("write:%s vs read:%s", string(hello), string(buf))
-            }
+            conn.Close()
         })
-    }
+        stopSvr.Done()
+    }()
 
+    stopSvr.Wait()
     // 等待服务器结束
     svr.Stop()
     <-stop

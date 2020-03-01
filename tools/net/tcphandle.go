@@ -45,9 +45,21 @@ func (h *tcpHandle) Run() {
             continue
         }
 
-        conn.SetReadBuffer(cfg.TCPReadBuffer)
-        conn.SetWriteBuffer(cfg.TCPWriteBuffer)
-        conn.SetNoDelay(cfg.TCPNoDelay)
+        if err := conn.SetReadBuffer(cfg.TCPReadBuffer); err != nil {
+            log.Errorf("set tcp conn read buffer err:%s", err.Error())
+            conn.Close()
+            continue
+        }
+        if err := conn.SetWriteBuffer(cfg.TCPWriteBuffer); err != nil {
+            log.Errorf("set tcp conn write buffer err:%s", err.Error())
+            conn.Close()
+            continue
+        }
+        if err := conn.SetNoDelay(cfg.TCPNoDelay); err != nil {
+            log.Errorf("set tcp no delay err:%s", err.Error())
+            conn.Close()
+            continue
+        }
         h.svr.addConnection(conn)
     }
 
