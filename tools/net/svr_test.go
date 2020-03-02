@@ -5,6 +5,7 @@ import (
     "net"
     "sync"
     "time"
+    "fmt"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
@@ -21,6 +22,17 @@ func (s *EchoHandle) HandleRecv(pkg []byte) []byte {
 
 func (s *EchoHandle) HandleTimeout(pkg []byte) []byte {
     return pkg
+}
+
+type EchoCli struct {
+}
+
+func (cli *EchoCli) Recv(pkg []byte) {
+    log.Debugf("client recv:%s", pkg)
+}
+
+func (cli *EchoCli) Parse(pkg []byte) (int,int) {
+    return len(pkg),PACKAGE_FULL
 }
 
 func TestSvr(t *testing.T) {
@@ -51,7 +63,7 @@ func TestSvr(t *testing.T) {
     time.Sleep(time.Second*2)
 
     var stopSvr sync.WaitGroup
-    stopSvr.Add(101)
+    stopSvr.Add(102)
 
     for i := 0; i < 100; i++ {
         // 之所以开启携程是模拟10个客户端并发连接
@@ -99,6 +111,28 @@ func TestSvr(t *testing.T) {
 
             conn.Close()
         })
+        stopSvr.Done()
+    }()
+
+    go func() {
+        cfg := CliCfg{Proto:"tcp"}
+        cli := NewCli(":8888", &cfg, &EchoCli{})
+
+        // 每隔2秒钟发送一个hello
+        // 发送10次退出
+        ticker := time.NewTicker(time.Second * 2)
+        cnt := 0
+        for {
+            select {
+            case t := <-ticker.C:
+                cli.Send([]byte(fmt.Sprintf("%s:hello", t)))
+                cnt += 1
+                if cnt > 10 {
+                    cnt = 0
+                    cli.SafeClose()
+                }
+            }
+        }
         stopSvr.Done()
     }()
 

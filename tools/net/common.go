@@ -33,5 +33,5 @@ type CliPkgHandle interface {
     // 将二进制流按照特定的协议解析成单个的包
     Parse(pkg []byte)(int,int)
     // 单个数据包正常处理
-    HandleRecv(pkg []byte)
+    Recv(pkg []byte)
 }

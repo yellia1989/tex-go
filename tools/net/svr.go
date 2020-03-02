@@ -13,7 +13,7 @@ import (
 )
 
 const (
-    write_queuecap = 10
+    svr_write_queuecap = 10
 )
 
 // 传输协议接口
@@ -55,7 +55,7 @@ type Conn struct {
 
 func (c *Conn) Send(pkg []byte) (err error) {
     if len(pkg) == 0 {
-        return fmt.Errorf("empty packet")
+        return fmt.Errorf("empty or nil pkg")
     }
 
     if atomic.LoadInt32(&c.close) == 1 {
@@ -111,7 +111,6 @@ func (c *Conn) doRead() {
                     log.FDebugf("conn:%d is unactive, will be closed", c.ID)
                     return
                 }
-                c.idleTime = time.Now()
                 continue
             }
             if (err == io.EOF) {
@@ -121,6 +120,7 @@ func (c *Conn) doRead() {
             }
             return
         }
+        c.idleTime = time.Now()
         // 解析包
         pkgbuf = append(pkgbuf, tmpbuf[:n]...)
         for {
@@ -203,8 +203,8 @@ type Svr struct {
 }
 
 func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) (*Svr, error) {
-    if cfg.WriteQueueCap <= write_queuecap {
-        cfg.WriteQueueCap = write_queuecap
+    if cfg.WriteQueueCap <= svr_write_queuecap {
+        cfg.WriteQueueCap = svr_write_queuecap
     }
 
     s := &Svr{cfg: cfg, pkgHandle: pkgHandle}
