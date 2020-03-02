@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"runtime"
 	"time"
+    "sync"
+    "sync/atomic"
 )
 
 //DEBUG loglevel
@@ -18,19 +20,24 @@ const (
 	ERROR
 )
 
-var (
-	logLevel = DEBUG
-    framework_logLevel = INFO
-
-	logQueue  = make(chan *logValue, 10000)
-	loggerMap = make(map[string]*Logger)
-	writeDone = make(chan struct{})
-    defaultLogger *Logger
+type config struct {
+	logLevel LogLevel
+    framework_logLevel LogLevel
 
 	currUnixTime int64
 	currDateTime string
 	currDateHour string
 	currDateDay  string
+}
+
+var (
+	logQueue  = make(chan *logValue, 10000)
+	loggerMap = make(map[string]*Logger)
+	writeDone = make(chan struct{})
+    defaultLogger *Logger
+
+    mu sync.Mutex
+    cfg atomic.Value
 )
 
 //Logger is the struct with name and wirter.
@@ -51,11 +58,16 @@ type logValue struct {
 
 func init() {
 	now := time.Now()
-	currUnixTime = now.Unix()
-	currDateTime = now.Format("2006-01-02 15:04:05")
-	currDateHour = now.Format("2006010215")
-	currDateDay = now.Format("20060102")
     defaultLogger = GetLogger("AB0D2927-C7EF-4E17-AB72-938D027B0D08")
+
+    cfg.Store(config{
+	    currUnixTime: now.Unix(),
+	    currDateTime: now.Format("2006-01-02 15:04:05"),
+	    currDateHour: now.Format("2006010215"),
+	    currDateDay: now.Format("20060102"),
+        logLevel: DEBUG,
+        framework_logLevel: INFO,
+    })
 
 	go func() {
         defer func() {
@@ -70,10 +82,15 @@ func init() {
 			tm.Reset(d)
 			<-tm.C
 			now = time.Now()
-			currUnixTime = now.Unix()
-			currDateTime = now.Format("2006-01-02 15:04:05")
-			currDateHour = now.Format("2006010215")
-			currDateDay = now.Format("20060102")
+            
+            mu.Lock()
+            old := cfg.Load().(config)
+			old.currUnixTime = now.Unix()
+			old.currDateTime = now.Format("2006-01-02 15:04:05")
+			old.currDateHour = now.Format("2006010215")
+			old.currDateDay = now.Format("20060102")
+            cfg.Store(old)
+            mu.Unlock()
 		}
 	}()
     
@@ -120,11 +137,19 @@ func GetLogger(name string) *Logger {
 
 //SetLevel sets the log level
 func SetLevel(level LogLevel) {
-	logLevel = level
+    mu.Lock()
+    old := cfg.Load().(config)
+    old.logLevel = level
+    cfg.Store(old)
+    mu.Unlock()
 }
 
 func SetFrameworkLevel(level LogLevel) {
-	framework_logLevel = level
+    mu.Lock()
+    old := cfg.Load().(config)
+    old.framework_logLevel = level
+    cfg.Store(old)
+    mu.Unlock()
 }
 
 //StringToLevel turns string to LogLevel
@@ -237,17 +262,18 @@ func (l *Logger) Errorf(format string, v ...interface{}) {
 }
 
 func (l *Logger) writef(framework bool, level LogLevel, format string, v []interface{}) {
-	if framework && level < framework_logLevel {
+    cfg := cfg.Load().(config)
+	if framework && level < cfg.framework_logLevel {
 		return
 	}
-	if !framework && level < logLevel {
+	if !framework && level < cfg.logLevel {
 		return
 	}
 
 	buf := bytes.NewBuffer(nil)
 	if l.writer.NeedPrefix() {
-		fmt.Fprintf(buf, "%s|", currDateTime)
-		if logLevel == DEBUG {
+		fmt.Fprintf(buf, "%s|", cfg.currDateTime)
+		if cfg.logLevel == DEBUG {
 			_, file, line, ok := runtime.Caller(2)
 			if !ok {
 				file = "???"

@@ -7,32 +7,14 @@ import (
     "net"
     "io"
     "fmt"
-    "strconv"
     "github.com/yellia1989/tex-go/tools/rtimer"
     "github.com/yellia1989/tex-go/tools/gpool"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
 const (
-    PACKAGE_LESS = iota
-    PACKAGE_FULL
-    PACKAGE_ERROR
-)
-
-const (
-    write_timeout = time.Millisecond * 10
     write_queuecap = 10
 )
-
-// 服务器接收到数据包的处理接口
-type PackageHandle interface {
-    // 将二进制流按照特定的协议解析成单个的包
-    Parse(bytes []byte) (int,int)
-    // 单个数据包正常处理
-    HandleRecv(pkg []byte) []byte
-    // 数据包超时处理
-    HandleTimeout(pkg []byte) []byte
-}
 
 // 传输协议接口
 type netHandle interface {
@@ -48,7 +30,6 @@ type SvrCfg struct {
     WorkQueueCap int // 包处理队列长度
     MaxConn        int // 最大连接数
     WriteQueueCap  int // 每个连接的待发送队列的长度
-    WriteTimeout   time.Duration
 
     HandleTimeout  time.Duration
     IdleTimeout    time.Duration
@@ -65,55 +46,43 @@ type Conn struct {
     conn net.Conn // 连接fd
     svr *Svr // 服务器
 
-    close bool // 连接关闭
+    close int32 // 连接关闭
     writech chan []byte // 写通道
     done sync.WaitGroup // 等待连接读写关闭
 
     idleTime time.Time // 最后一次活跃时间点
 }
 
-func (c *Conn) Send(pkg []byte) error {
+func (c *Conn) Send(pkg []byte) (err error) {
     if len(pkg) == 0 {
         return fmt.Errorf("empty packet")
     }
 
-    if c.close {
+    if atomic.LoadInt32(&c.close) == 1 {
         return fmt.Errorf("conn has been closed")
     }
 
     // writech的大小应该根据下面情况综合考虑来设置
     // 1. 发包频率
     // 2. 收包频率
-    done := make(chan struct{})
-    go func() {
-        defer func() {
-            if err := recover(); err != nil {
-                // 防止往已经关闭的ch写数据导致的crash
-                done <- struct{}{}
-            }
-        }()
-        c.writech <- pkg
-        done <- struct{}{}
-    }()
-
-    select {
-        case <-rtimer.After(c.svr.cfg.WriteTimeout):
-            return fmt.Errorf("send packet timeout")
-        case <-done:
-    }
-
+    c.writech <- pkg
     return nil
 }
 
 func (c *Conn) SafeClose() {
-    close(c.writech)
+    if atomic.LoadInt32(&c.close) == 1 {
+        return
+    }
+
+    pkg := make([]byte, 0)
+    c.writech <- pkg
 }
 
 func (c *Conn) Close() {
-    if c.close {
+    if !atomic.CompareAndSwapInt32(&c.close, 0, 1) {
+        // 已经关闭了
         return
     }
-    c.close = true
     c.conn.Close()
     close(c.writech)
 }
@@ -127,7 +96,7 @@ func (c *Conn) doRead() {
     c.idleTime = time.Now()
     tmpbuf := make([]byte, 1024*4)
     var pkgbuf []byte
-    for !c.svr.close {
+    for atomic.LoadInt32(&c.svr.close) == 0 {
         if c.svr.cfg.IdleTimeout != 0 {
             if err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
                 log.FErrorf("conn:%d set read timeout err:%s", err.Error())
@@ -194,12 +163,12 @@ func (c *Conn) doWrite() {
 
     for {
         select {
-        case pkg, ok := <-c.writech :
-            if !ok {
+        case pkg := <-c.writech :
+            total := len(pkg)
+            if total == 0 {
                 // 优雅关闭
                 return
             }
-            total := len(pkg)
             for {
                 n, err := c.conn.Write(pkg)
                 if err != nil {
@@ -221,27 +190,25 @@ func (c *Conn) doWrite() {
 // 服务器
 type Svr struct {
     cfg *SvrCfg // 配置
-    pkgHandle PackageHandle // 包处理
-    close bool // 服务器是否关闭
+    pkgHandle SvrPkgHandle // 包处理
+    close int32 // 服务器是否关闭
 
     netHandle netHandle // 网络字节流处理
-    conns sync.Map //[uint32]*Conn 网络连接
-    id uint32 // conn auto incr id
-
     workPool *gpool.Pool // 工作线程
 
-    connNum int32 // 当前连接数
+    mu sync.Mutex
+    id uint32 // conn auto incr id
+    connNum uint32 // 当前连接数
+    conns map[uint32]*Conn //网络连接
 }
 
-func NewSvr(cfg *SvrCfg, pkgHandle PackageHandle) (*Svr, error) {
+func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) (*Svr, error) {
     if cfg.WriteQueueCap <= write_queuecap {
         cfg.WriteQueueCap = write_queuecap
     }
-    if cfg.WriteTimeout <= write_timeout {
-        cfg.WriteTimeout = write_timeout
-    }
 
-    s := &Svr{cfg: cfg, pkgHandle: pkgHandle, close: false}
+    s := &Svr{cfg: cfg, pkgHandle: pkgHandle}
+    s.conns = make(map[uint32]*Conn)
 
     if s.cfg.Proto == "tcp" {
         s.netHandle = &tcpHandle{svr: s}
@@ -275,50 +242,55 @@ func (s *Svr) Run() {
 }
 
 func (s *Svr) Stop() {
-    s.close = true
+    if !atomic.CompareAndSwapInt32(&s.close, 0, 1) {
+        return
+    }
 }
 
 func (s *Svr) delConnection(id uint32) {
-    s.conns.Delete(id)
-    atomic.AddInt32(&s.connNum, -1)
+    s.mu.Lock()
+    delete(s.conns, id)
+    s.mu.Unlock()
     log.FDebugf("delete conn:%d", id)
 }
 
 func (s *Svr) CloseConnection(id uint32) {
-    conn, ok := s.conns.Load(id)
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    conn, ok := s.conns[id]
     if !ok {
         return
     }
-    conn.(*Conn).SafeClose()
+    conn.SafeClose()
 }
 
 func (s *Svr) addConnection(c net.Conn) {
-    if s.connNum >= int32(s.cfg.MaxConn) {
+    s.mu.Lock()
+    connNum := len(s.conns)
+    if connNum >= s.cfg.MaxConn {
+        s.mu.Unlock()
         // 超过了最大连接数,直接关闭连接
         c.Close()
-        log.FErrorf("exceed max conn:%d, cur:%d", s.cfg.MaxConn, s.connNum)
+        log.FErrorf("exceed max conn:%d, cur:%d", s.cfg.MaxConn, connNum)
         return
     }
 
-    id := atomic.AddUint32(&s.id, 1)
-    conn := &Conn{ID: id, conn: c, close: false, svr: s}
+    s.id++
+    conn := &Conn{ID: s.id, conn: c, svr: s}
 
     _, conn.IsTcp = c.(*net.TCPConn)
 
     // writech的大小决定了conn调用write时是否阻塞
     conn.writech = make(chan []byte, s.cfg.WriteQueueCap)
 
-    _, ok := s.conns.LoadOrStore(id, conn)
-    if ok {
-        panic("add new conn failed, id:" + strconv.Itoa(int(id)))
-    }
-    atomic.AddInt32(&s.connNum, 1)
+    s.conns[conn.ID] = conn
+    s.mu.Unlock()
 
     // 等待连接关闭
     conn.done.Add(2)
     go func() {
         conn.done.Wait()
-        s.delConnection(id)
+        s.delConnection(conn.ID)
     }()
 
     // 开启读写协程
@@ -329,19 +301,28 @@ func (s *Svr) addConnection(c net.Conn) {
 }
 
 func (s *Svr) Send(id uint32, pkg []byte) {
-    v, ok := s.conns.Load(id)
+    s.mu.Lock()
+    conn, ok := s.conns[id]
     if !ok {
+        s.mu.Unlock()
         return 
     }
-    conn := v.(*Conn)
+    s.mu.Unlock()
+
     conn.Send(pkg)
 }
 
 func (s *Svr) SendToAll(pkg []byte) {
-    s.conns.Range(func (k, v interface{}) bool {
-        v.(*Conn).Send(pkg)
-        return true
-    })
+    s.mu.Lock()
+    conns := make([]*Conn, len(s.conns))
+    for _, v := range s.conns {
+        conns = append(conns, v)
+    }
+    s.mu.Unlock()
+
+    for _, v := range conns {
+        v.Send(pkg)
+    }
 }
 
 func (s *Svr) recvPkg(recvTime time.Time, pkg []byte) []byte {

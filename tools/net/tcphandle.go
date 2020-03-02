@@ -2,6 +2,7 @@ package net
 
 import (
     "net"
+    "sync/atomic"
     "time"
     "github.com/yellia1989/tex-go/tools/log"
 )
@@ -31,7 +32,7 @@ func (h *tcpHandle) Run() {
     }
     log.FDebugf("start listen on:%s", addr)
 
-    for !h.svr.close {
+    for atomic.LoadInt32(&h.svr.close) == 0 {
         if err := h.lis.SetDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
             log.FErrorf("set accept timeout failed:%s", err.Error())
             return
