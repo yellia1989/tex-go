@@ -17,6 +17,7 @@ func (s *EchoHandle) Parse(bytes []byte) (int,int) {
 }
 
 func (s *EchoHandle) HandleRecv(pkg []byte) []byte {
+    log.FDebugf("svr recv:%s", string(pkg))
     return pkg
 }
 
@@ -118,25 +119,39 @@ func TestSvr(t *testing.T) {
         cfg := CliCfg{Proto:"tcp"}
         cli := NewCli(":8888", &cfg, &EchoCli{})
 
+        defer func() {
+            cli.Close()
+            stopSvr.Done()
+        }()
+
         // 每隔2秒钟发送一个hello
-        // 发送10次退出
+        // 发送5次断开连接,再次发送5次然后退出
         ticker := time.NewTicker(time.Second * 2)
         cnt := 0
+        total := 11
         for {
             select {
-            case t := <-ticker.C:
-                cli.Send([]byte(fmt.Sprintf("%s:hello", t)))
+            case <-ticker.C:
+                msg := fmt.Sprintf("%d:hello", total)
+                log.FDebugf("client send:%s", msg)
+                cli.Send([]byte(msg))
                 cnt += 1
-                if cnt > 10 {
+                total--
+                if total <= 0 {
+                    return
+                }
+                if cnt > 5 {
                     cnt = 0
                     cli.SafeClose()
                 }
             }
         }
-        stopSvr.Done()
     }()
 
     stopSvr.Wait()
+
+    time.Sleep(time.Second * 10)
+
     // 等待服务器结束
     svr.Stop()
     <-stop
