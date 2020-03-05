@@ -1,0 +1,33 @@
+package main
+
+import (
+    tex "github.com/yellia1989/tex-go"
+    "github.com/yellia1989/tex-go/tools/log"
+    "github.com/yellia1989/tex-go/example/echo"
+)
+
+type EchoServer struct {
+}
+
+func (s *EchoServer) Init() {
+    // 应用初始化
+    log.Debug("server init")
+}
+
+func (s *EchoServer) Loop() {
+    // 应用主循环
+    log.Debug("server loop")
+}
+
+func (s *EchoServer) Terminate() {
+    // 应用停止
+    log.Debug("server terminate")
+}
+
+func main() {
+    service := &echo.EchoService{}
+    serviceImpl := &EchoServiceImpl{}
+    tex.AddService("test.EchoServer.EchoServiceObj", service, serviceImpl)
+
+    tex.Run(&EchoServer{})
+}

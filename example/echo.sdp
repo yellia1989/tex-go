@@ -1,0 +1,7 @@
+module echo {
+
+interface {
+    hello(string req, out string resp)
+};
+
+};

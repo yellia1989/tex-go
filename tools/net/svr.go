@@ -7,13 +7,14 @@ import (
     "net"
     "io"
     "fmt"
-    "github.com/yellia1989/tex-go/tools/rtimer"
+    "context"
     "github.com/yellia1989/tex-go/tools/gpool"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
 const (
     svr_write_queuecap = 10
+    svr_work_queuetimeout = time.Millisecond*5
 )
 
 // 传输协议接口
@@ -28,11 +29,12 @@ type SvrCfg struct {
 
     WorkThread int // 包处理协程个数
     WorkQueueCap int // 包处理队列长度
+    WorkQueueTimeout   time.Duration
+
     MaxConn        int // 最大连接数
     WriteQueueCap  int // 每个连接的待发送队列的长度
 
-    HandleTimeout  time.Duration
-    IdleTimeout    time.Duration
+    IdleTimeout    time.Duration // 每个连接的最长空闲时间
 
     TCPReadBuffer  int
     TCPWriteBuffer int
@@ -131,7 +133,7 @@ func (c *Conn) doRead() {
             if status == PACKAGE_FULL {
                 pkg := make([]byte, pkglen)
                 copy(pkg, pkgbuf[:pkglen])
-                c.recvPkg(pkg)
+                c.svr.recvPkg(c, pkg)
                 pkgbuf = pkgbuf[pkglen:]
                 if len(pkgbuf) > 0 {
                     continue
@@ -143,16 +145,6 @@ func (c *Conn) doRead() {
             return
         }
     }
-}
-
-func (c *Conn) recvPkg(pkg []byte) {
-    now := time.Now()
-    handler := func() {
-        rsp := c.svr.recvPkg(now, pkg)
-        c.Send(rsp)
-    }
-
-    c.svr.workPool.JobQueue <- handler
 }
 
 func (c *Conn) doWrite() {
@@ -196,15 +188,21 @@ type Svr struct {
     netHandle netHandle // 网络字节流处理
     workPool *gpool.Pool // 工作线程
 
+    muQueue sync.Mutex
+    queueSize int // 工作队列长度
+
     mu sync.Mutex
     id uint32 // conn auto incr id
     connNum uint32 // 当前连接数
     conns map[uint32]*Conn //网络连接
 }
 
-func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) (*Svr, error) {
+func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) *Svr {
     if cfg.WriteQueueCap <= svr_write_queuecap {
         cfg.WriteQueueCap = svr_write_queuecap
+    }
+    if cfg.WorkQueueTimeout <= svr_work_queuetimeout {
+        cfg.WorkQueueTimeout = svr_work_queuetimeout
     }
 
     s := &Svr{cfg: cfg, pkgHandle: pkgHandle}
@@ -218,7 +216,7 @@ func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) (*Svr, error) {
         panic("unsupport proto:" + s.cfg.Proto)
     }
 
-    return s, nil
+    return s
 }
 
 func (s *Svr) Run() {
@@ -254,7 +252,7 @@ func (s *Svr) delConnection(id uint32) {
     log.FDebugf("delete conn:%d", id)
 }
 
-func (s *Svr) CloseConnection(id uint32) {
+func (s *Svr) closeConnection(id uint32) {
     s.mu.Lock()
     defer s.mu.Unlock()
     conn, ok := s.conns[id]
@@ -325,24 +323,26 @@ func (s *Svr) SendToAll(pkg []byte) {
     }
 }
 
-func (s *Svr) recvPkg(recvTime time.Time, pkg []byte) []byte {
-    cfg := s.cfg
-    var rsp []byte
-    if cfg.HandleTimeout == 0 {
-        rsp = s.pkgHandle.HandleRecv(pkg)
-    } else {
-        done := make(chan struct{})
-        go func() {
-            rsp = s.pkgHandle.HandleRecv(pkg)
-            done <- struct{}{}
-        }()
-        endtime := recvTime.Add(cfg.HandleTimeout)
-        select {
-        case <-rtimer.After(endtime.Sub(time.Now())):
-            rsp = s.pkgHandle.HandleTimeout(pkg)
-        case <-done:
-        }
+func (s *Svr) recvPkg(c *Conn, pkg []byte) {
+    overload := false
+    s.muQueue.Lock()
+    if s.queueSize > s.cfg.WorkQueueCap {
+        // 超过服务器负载直接丢弃
+        s.muQueue.Unlock()
+        return
     }
-    return rsp
-}
+    if s.queueSize > s.cfg.WorkQueueCap/2 {
+        overload = true
+    }
+    s.queueSize += 1
+    s.muQueue.Unlock()
 
+    ctx := contextWithCurrent(context.Background(), c)
+    recvTime := time.Now()
+    handler := func() {
+        timeout := recvTime.Add(s.cfg.WorkQueueTimeout).Before(time.Now())
+        s.pkgHandle.HandleRecv(ctx, pkg, overload, timeout)
+    }
+
+    c.svr.workPool.JobQueue <- handler
+}

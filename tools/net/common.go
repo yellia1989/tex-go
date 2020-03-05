@@ -2,6 +2,7 @@ package net
 
 import (
     "net"
+    "context"
 )
 
 func isTimeoutErr(err error) bool {
@@ -22,10 +23,7 @@ const (
 type SvrPkgHandle interface {
     // 将二进制流按照特定的协议解析成单个的包
     Parse(bytes []byte) (int,int)
-    // 单个数据包正常处理
-    HandleRecv(pkg []byte) []byte
-    // 数据包超时处理
-    HandleTimeout(pkg []byte) []byte
+    HandleRecv(ctx context.Context, pkg []byte, overload bool, queuetimeout bool)
 }
 
 // 客户端接收到数据包的处理接口

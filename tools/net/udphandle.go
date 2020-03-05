@@ -1,7 +1,8 @@
 package net
 
 import (
-    "github.com/yellia1989/tex-go/tools/log"
+    "net"
+    _ "github.com/yellia1989/tex-go/tools/log"
 )
 
 type udpHandle struct {

@@ -6,6 +6,7 @@ import (
     "sync"
     "time"
     "fmt"
+    "context"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
@@ -16,13 +17,11 @@ func (s *EchoHandle) Parse(bytes []byte) (int,int) {
     return len(bytes),PACKAGE_FULL
 }
 
-func (s *EchoHandle) HandleRecv(pkg []byte) []byte {
-    log.FDebugf("svr recv:%s", string(pkg))
-    return pkg
-}
+func (s *EchoHandle) HandleRecv(ctx context.Context, pkg []byte, overload bool, queuetimeout bool) {
+    current := contextGetCurrent(ctx)
+    log.FDebugf("svr ip:%s, port:%d, overload:%t, queuetimeout:%t, recv:%s", current.IP, current.Port, overload, queuetimeout, string(pkg))
 
-func (s *EchoHandle) HandleTimeout(pkg []byte) []byte {
-    return pkg
+    current.SendResponse(pkg)
 }
 
 type EchoCli struct {
@@ -50,11 +49,7 @@ func TestSvr(t *testing.T) {
 
     log.SetFrameworkLevel(log.DEBUG)
 
-    svr, err := NewSvr(cfg, &EchoHandle{})
-    if err != nil {
-        t.Fatalf("create svr err:%s", err)
-    }
-
+    svr := NewSvr(cfg, &EchoHandle{})
     stop := make(chan bool)
     go func() {
         svr.Run()
