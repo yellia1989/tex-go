@@ -29,5 +29,9 @@ func main() {
     serviceImpl := &EchoServiceImpl{}
     tex.AddService("test.EchoServer.EchoServiceObj", service, serviceImpl)
 
+    service2 := &echo.EchoService{}
+    serviceImpl2 := &EchoServiceImpl{}
+    tex.AddService("test.EchoServer.EchoServiceObj2", service2, serviceImpl2)
+
     tex.Run(&EchoServer{})
 }

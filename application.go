@@ -2,25 +2,22 @@ package tex
 
 import (
     "time"
+    "os"
+    "os/signal"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
 // 应用程序必须实现的接口
-type App interface {
+type app interface {
     Init()
     Loop()
     Terminate()
 }
 
-var (
-    shutdown chan bool
-)
-
 func init() {
-    shutdown = make(chan bool)
 }
 
-func Run(app App) {
+func Run(svr app) {
     defer func() {
         log.FlushLogger()
     }()
@@ -44,7 +41,7 @@ func Run(app App) {
     }
 
     // 初始化应用程序
-    app.Init()
+    svr.Init()
 
     // 开启服务器
     if err := startServer(); err != nil {
@@ -52,31 +49,26 @@ func Run(app App) {
         return
     }
 
+    // 监听信号
+    c := make(chan os.Signal, 2)
+    signal.Notify(c, os.Interrupt)
+
     // 启动主循环等待服务器结束
     ticker := time.NewTicker(time.Second)
-    for {
+    run := true
+    for run {
         select {
-        case <-shutdown :
-            goto stop
+        case <-c :
+            run = false
         case <-ticker.C :
-            app.Loop()
+            svr.Loop()
         }
     }
-    stop:
     // 结束服务器
     stopServer()
 
     // 结束应用程序
-    app.Terminate()
-}
-
-func stop() {
-    shutdown <- true
-}
-
-func parseCfg() error {
-    // TODO
-    return nil
+    svr.Terminate()
 }
 
 func initClient() error {

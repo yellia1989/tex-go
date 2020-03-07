@@ -5,6 +5,7 @@ import (
     "fmt"
     "context"
     "github.com/yellia1989/tex-go/tools/net"
+    "github.com/yellia1989/tex-go/tools/log"
     "github.com/yellia1989/tex-go/protocol/protocol"
 )
 
@@ -39,19 +40,26 @@ func AddService(obj string, service Service, serviceImpl interface{}) {
 
 func startServer() (err error) {
     defer func() {
-        err := recover()
-        if err != nil {
-            err = fmt.Errorf("%s", err)
+        perr := recover()
+        if perr != nil {
+            err = fmt.Errorf("%s", perr)
         }
     }()
     for k, v := range services {
-        _, ok := servicesCfg[k]
+        cfg, ok := servicesCfg[k]
         if !ok {
             panic(fmt.Sprintf("service:%s can't find cfg", k))
         }
         
         svr := net.NewSvr(&net.SvrCfg{
-           // TODO 
+            Proto: cfg.endpoint.Proto,
+            Address: cfg.endpoint.Address(),
+            WorkThread: cfg.threads,
+            WorkQueueCap: cfg.queuecap,
+            WorkQueueTimeout: cfg.queuetimeout,
+            MaxConn: cfg.maxconns,
+            IdleTimeout: cfg.endpoint.Idletimeout,
+            TCPNoDelay: true,
         },&texSvrPkgHandle{
             service: v.service,
             serviceImpl: v.serviceImpl,
@@ -59,9 +67,14 @@ func startServer() (err error) {
         svrRun[k] = svr
         svrDone.Add(1)
 
-        go svr.Run()
+        go func(service string) {
+            log.FDebugf("service:%s start", service)
+            svr.Run()
+            log.FDebugf("service:%s stop", service)
+            svrDone.Done()
+        }(k)
     }
-    return nil
+    return
 }
 
 func stopServer() {

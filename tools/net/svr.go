@@ -220,11 +220,11 @@ func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) *Svr {
 }
 
 func (s *Svr) Run() {
-    log.FDebug("start server")
-
     // 开启工作协程
     s.workPool = gpool.NewPool(s.cfg.WorkThread, s.cfg.WorkQueueCap)
+    log.FDebugf("work threads=%d cap=%d start", s.cfg.WorkThread, s.cfg.WorkQueueCap)
 
+    log.FDebug("net thread start")
     network := make(chan struct{})
     go func () {
         // 开启网络监听
@@ -232,11 +232,11 @@ func (s *Svr) Run() {
         network <- struct{}{}
     }()
     <-network
+    log.FDebug("net thread stop")
 
     // 停止工作协程
     s.workPool.Release()
-
-    log.FDebug("svr stop")
+    log.FDebug("work threads stop")
 }
 
 func (s *Svr) Stop() {
