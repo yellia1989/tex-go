@@ -4,6 +4,7 @@ import (
     "time"
     "os"
     "os/signal"
+    "syscall"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
@@ -50,8 +51,8 @@ func Run(svr app) {
     }
 
     // 监听信号
-    c := make(chan os.Signal, 2)
-    signal.Notify(c, os.Interrupt)
+    c := make(chan os.Signal)
+    signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
     // 启动主循环等待服务器结束
     ticker := time.NewTicker(time.Second)
