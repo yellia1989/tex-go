@@ -1,8 +1,6 @@
 package tex
 
 import (
-    _ "fmt"
-    _ "time"
     "context"
     "encoding/binary"
     "github.com/yellia1989/tex-go/tools/net"

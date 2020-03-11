@@ -47,17 +47,17 @@ func (h *tcpHandle) Run() {
         }
 
         if err := conn.SetReadBuffer(cfg.TCPReadBuffer); err != nil {
-            log.Errorf("set tcp conn read buffer err:%s", err.Error())
+            log.FErrorf("set tcp conn read buffer err:%s", err.Error())
             conn.Close()
             continue
         }
         if err := conn.SetWriteBuffer(cfg.TCPWriteBuffer); err != nil {
-            log.Errorf("set tcp conn write buffer err:%s", err.Error())
+            log.FErrorf("set tcp conn write buffer err:%s", err.Error())
             conn.Close()
             continue
         }
         if err := conn.SetNoDelay(cfg.TCPNoDelay); err != nil {
-            log.Errorf("set tcp no delay err:%s", err.Error())
+            log.FErrorf("set tcp no delay err:%s", err.Error())
             conn.Close()
             continue
         }

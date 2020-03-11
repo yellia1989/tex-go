@@ -3,7 +3,7 @@ package main
 import (
     tex "github.com/yellia1989/tex-go"
     "github.com/yellia1989/tex-go/tools/log"
-    "github.com/yellia1989/tex-go/example/echo"
+    "github.com/yellia1989/tex-go/example/server/echo"
 )
 
 type EchoServer struct {
@@ -16,7 +16,7 @@ func (s *EchoServer) Init() {
 
 func (s *EchoServer) Loop() {
     // 应用主循环
-    log.Debug("server loop")
+    //log.Debug("server loop")
 }
 
 func (s *EchoServer) Terminate() {

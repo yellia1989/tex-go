@@ -2,14 +2,47 @@ package echo
 
 import (
     "context"
+    "time"
     "github.com/yellia1989/tex-go/protocol/protocol"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
     "github.com/yellia1989/tex-go/tools/net"
     "github.com/yellia1989/tex-go/tools/log"
+    tex "github.com/yellia1989/tex-go"
 )
 
 type EchoService struct {
     name string
+    proxy tex.ServicePrxImpl
+}
+
+func (s *EchoService) SetPrxImpl(impl tex.ServicePrxImpl) {
+    s.proxy = impl
+}
+
+func (s *EchoService) SetTimeout(timeout time.Duration) {
+    s.proxy.SetTimeout(timeout)
+}
+
+func (s *EchoService) Hello(req string, resp *string) error {
+    p := codec.NewPacker()
+    err := p.WriteString(0, req)
+    if err != nil {
+        return err
+    }
+
+    var rsp protocol.ResponsePacket
+    err = s.proxy.Invoke("Hello", p.ToBytes(), &rsp)
+    if err != nil {
+        return err
+    }
+
+    up := codec.NewUnPacker([]byte(rsp.SRspPayload))
+    err = up.ReadString(resp, 0 ,true)
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
 type echoServiceImpl interface {

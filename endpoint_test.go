@@ -17,7 +17,10 @@ func TestEndpoint(t *testing.T) {
     }
 
     for k, v := range m {
-        real := NewEndpoint(k)
+        real, err := NewEndpoint(k)
+        if err != nil {
+            t.Fatalf("%s\n", err.Error())
+        }
         if v.String() != real.String() {
             t.Fatalf("real:%s, expect=%s", real, v)
         }

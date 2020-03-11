@@ -29,7 +29,7 @@ type SvrPkgHandle interface {
 // 客户端接收到数据包的处理接口
 type CliPkgHandle interface {
     // 将二进制流按照特定的协议解析成单个的包
-    Parse(pkg []byte)(int,int)
+    Parse(bytes []byte)(int,int)
     // 单个数据包正常处理
     Recv(pkg []byte)
 }

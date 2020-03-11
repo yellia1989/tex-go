@@ -24,12 +24,11 @@ func (ep *Endpoint) Address() string {
 }
 
 // tcp -h 127.0.0.1 -p 8080 -t 3600000
-func NewEndpoint(endpoint string) *Endpoint {
+func NewEndpoint(endpoint string) (*Endpoint,error) {
     tokens := strings.Fields(endpoint)
 
     if len(tokens) != 7 {
-        fmt.Printf("%s\n", tokens)
-        panic("invalid endpoint")
+        return nil, fmt.Errorf("invalid endpoint")
     }
 
     var err error
@@ -40,5 +39,5 @@ func NewEndpoint(endpoint string) *Endpoint {
         panic("invalid endpoint")
     }
     ep.Idletimeout = util.AtoDuration(tokens[6]+"ms")
-    return ep
+    return ep,nil
 }

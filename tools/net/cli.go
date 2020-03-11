@@ -72,11 +72,13 @@ func (cli *Cli) connect() error {
     // 默认1秒连接超时
     conn, err := net.DialTimeout(cli.cfg.Proto, cli.address, time.Second * 1)
     if err != nil {
+        log.FErrorf("connect to %s %s err:%s", cli.cfg.Proto, cli.address, err.Error())
         return err
     }
     cli.conn = conn
     cli.close = false
     cli.writech = make(chan []byte, cli.cfg.WriteQueueCap)
+    log.FDebugf("connect to %s %s success", cli.cfg.Proto, cli.address)
 
     // 开启一个独立的携程写
     go cli.doWrite()
@@ -151,7 +153,7 @@ func (cli *Cli) doRead() {
     var pkgbuf []byte
     for {
         if err := cli.conn.SetReadDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
-            log.FError("set conn read deadline err:%s", err.Error())
+            log.FErrorf("set conn read deadline err:%s", err.Error())
             return
         }
         n, err := cli.conn.Read(tmpbuf)

@@ -12,6 +12,7 @@ import (
 
 var (
     servicesCfg map[string]*serviceCfg
+    cliCfg clientCfg
     configFile string
 
     App     string
@@ -27,6 +28,11 @@ func init() {
         fmt.Fprintf(os.Stderr, "Usage: %s --config file\n", os.Args[0])
         os.Exit(1)
     }
+
+    cliCfg.invokeTimeout = 5 * time.Second
+    cliCfg.endpointRefreshInterval = 60 * time.Second
+    cliCfg.adapterSendQueueCap = 10000
+    cliCfg.adapterIdleTimeout = 10 * time.Minute
 }
 
 type serviceCfg struct {
@@ -37,6 +43,14 @@ type serviceCfg struct {
     maxconns int  // 1024
     queuecap int  // 10240
     queuetimeout time.Duration // 5000
+}
+
+type clientCfg struct {
+    locator string
+    invokeTimeout time.Duration
+    endpointRefreshInterval time.Duration
+    adapterSendQueueCap int
+    adapterIdleTimeout time.Duration
 }
 
 func parseCfg() error {
@@ -82,7 +96,13 @@ func parseCfg() error {
         }
         objCfg := &serviceCfg{}
         objCfg.service = cfg.GetCfg("service","")
-        objCfg.endpoint = NewEndpoint(cfg.GetCfg("endpoint", ""))
+
+        var err error
+        objCfg.endpoint, err = NewEndpoint(cfg.GetCfg("endpoint", ""))
+        if err != nil {
+            return err
+        }
+
         objCfg.isTex = cfg.GetCfg("protocol", "tex") == "tex"
         objCfg.threads = cfg.GetInt("threads", 1)
         objCfg.maxconns = cfg.GetInt("maxconns", 1024)
@@ -98,6 +118,26 @@ func parseCfg() error {
         servicesCfg[objCfg.service] = objCfg
         i++
     }
+
+    // 解析客户端配置
+    cliconfig := cfg.GetSubCfg("tex/application/client")
+    cliCfg.locator = cliconfig.GetCfg("locator", "")
+    invokeTimeout := cliconfig.GetCfg("async-invoke-timeout", "5s")
+    if invokeTimeout != "5s" {
+        invokeTimeout += "ms"
+    }
+    cliCfg.invokeTimeout = util.AtoDuration(invokeTimeout)
+    endpointRefreshInterval := cliconfig.GetCfg("refresh-endpoint-interval", "60s")
+    if endpointRefreshInterval != "60s" {
+        endpointRefreshInterval += "ms"
+    }
+    cliCfg.endpointRefreshInterval = util.AtoDuration(endpointRefreshInterval)
+    cliCfg.adapterSendQueueCap = cliconfig.GetInt("send-queue-cap", 10000)
+    adapterIdleTimeout := cliconfig.GetCfg("idle-time", "10m")
+    if adapterIdleTimeout != "10m" {
+        adapterIdleTimeout += "ms"
+    }
+    cliCfg.adapterIdleTimeout = util.AtoDuration(adapterIdleTimeout)
 
     return nil
 }

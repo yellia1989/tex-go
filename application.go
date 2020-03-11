@@ -15,7 +15,12 @@ type app interface {
     Terminate()
 }
 
+var (
+    comm *Communicator
+)
+
 func init() {
+    comm = NewCommunicator()
 }
 
 func Run(svr app) {
@@ -70,6 +75,13 @@ func Run(svr app) {
 
     // 结束应用程序
     svr.Terminate()
+
+    // 结束客户端
+    stopClient()
+}
+
+func StringToProxy(name string, proxy ServicePrx) error {
+    return comm.StringToProxy(name, proxy)
 }
 
 func initClient() error {
@@ -80,4 +92,8 @@ func initClient() error {
 func initServer() error {
     // TODO
     return nil
+}
+
+func stopClient() {
+    comm.Close()
 }
