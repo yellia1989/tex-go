@@ -13,6 +13,7 @@ import (
     "strconv"
     "fmt"
     "time"
+    "errors"
     "encoding/binary"
     "github.com/yellia1989/tex-go/protocol/protocol"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
@@ -48,8 +49,6 @@ type adapterProxy struct {
 }
 
 func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.ResponsePacket) error {
-    log.FDebugf("req:%v", *req)
-
     // 请求队列已经达到最大值,直接报错
     mu := &adapter.mu
     mu.Lock()
@@ -79,24 +78,16 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         // 注意:
         // send发送是阻塞的，所以当服务不可用时会有大量的消息阻塞在这,
         // 直到达到cliCfg配置的消息上限
-        *resp = protocol.ResponsePacket{
-            IRequestId: req.IRequestId,
-            IRet: protocol.SDPPROXYCONNECTERR,
-        }
-        log.FErrorf("connect to adapter:%s err:%s", adapter.ep, err.Error())
-        return nil
+        return errors.New("connect error")
     }
 
     select {
     case <-rtimer.After(time.Duration(req.ITimeout) * time.Millisecond):
         // 请求超时，取消请求
-        *resp = protocol.ResponsePacket{
-            IRequestId: req.IRequestId,
-            IRet: protocol.SDPASYNCCALLTIMEOUT,
-        }
         atomic.AddUint32(&adapter.failTotal, 1)
         atomic.AddUint32(&adapter.consfailTotal, 1)
         log.FErrorf("wait for response timeout, reqid:%d, adapter:%s", req.IRequestId, adapter.ep)
+        return errors.New("req timeout")
     case resp2 := <-ch:
         // 收到回复
         atomic.StoreUint32(&adapter.consfailTotal, 0)
@@ -104,7 +95,7 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         if resp2.IRet == protocol.SDPSERVERSUCCESS {
             *resp = *resp2
         } else {
-            return fmt.Errorf("remote server err:%d", resp2.IRet)
+            return errors.New("remote server error")
         }
     }
 
@@ -129,6 +120,8 @@ func (adapter *adapterProxy) send(req *protocol.RequestPacket) error {
 
     // 只统计发送成功的
     atomic.AddUint32(&adapter.sendTotal, 1)
+
+    log.FDebugf("push request(send), reqid:%d, adapter:%s", req.IRequestId, adapter.ep)
 
     return nil
 }
