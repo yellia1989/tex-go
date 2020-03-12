@@ -6,6 +6,7 @@ import (
    "sync"
    "fmt"
    "io"
+   "errors"
    "github.com/yellia1989/tex-go/tools/log"
 )
 
@@ -57,10 +58,17 @@ func (cli *Cli) Send(pkg []byte) error {
             return err
         }
     }
+    cli.mu.Unlock()
+
+    cli.mu.Lock()
+    if cli.close {
+        cli.mu.Unlock()
+        return errors.New("conn has been closed")
+    }
+    cli.writech <- pkg
     cli.idleTime = time.Now()
     cli.mu.Unlock()
 
-    cli.writech <- pkg
     return nil
 }
 

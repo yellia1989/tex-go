@@ -340,6 +340,11 @@ func (s *Svr) recvPkg(c *Conn, pkg []byte) {
     ctx := contextWithCurrent(context.Background(), c)
     recvTime := time.Now()
     handler := func() {
+        defer func() {
+            s.muQueue.Lock()
+            s.queueSize -= 1
+            s.muQueue.Unlock()
+        }()
         timeout := recvTime.Add(s.cfg.WorkQueueTimeout).Before(time.Now())
         s.pkgHandle.HandleRecv(ctx, pkg, overload, timeout)
     }

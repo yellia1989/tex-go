@@ -78,7 +78,7 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         // 注意:
         // send发送是阻塞的，所以当服务不可用时会有大量的消息阻塞在这,
         // 直到达到cliCfg配置的消息上限
-        return errors.New("connect error")
+        return fmt.Errorf("connect err:%s", err.Error())
     }
 
     select {
@@ -95,7 +95,7 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         if resp2.IRet == protocol.SDPSERVERSUCCESS {
             *resp = *resp2
         } else {
-            return errors.New("remote server error")
+            return fmt.Errorf("remote server err, ret:%d", resp2.IRet)
         }
     }
 
