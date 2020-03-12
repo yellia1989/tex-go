@@ -11,7 +11,6 @@ import (
 )
 
 type EchoService struct {
-    name string
     proxy tex.ServicePrxImpl
 }
 
@@ -53,12 +52,6 @@ func (s *EchoService) Dispatch(ctx context.Context, serviceImpl interface{}, req
     current := net.ContextGetCurrent(ctx)
 
     log.FDebugf("handle tex request, peer: %s:%d, obj: %s, func: %s, reqid: %d", current.IP, current.Port, req.SServiceName, req.SFuncName, req.IRequestId) 
-
-    // 服务名称不匹配
-    if s.name != req.SServiceName {
-        current.SendTexResponse(protocol.SDPSERVERNOSERVICEERR, nil)
-        return
-    }
 
     ret := protocol.SDPSERVERUNKNOWNERR
     up := codec.NewUnPacker([]byte(req.SReqPayload))

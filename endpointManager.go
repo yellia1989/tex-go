@@ -13,7 +13,7 @@ import (
     "strings"
     "sync/atomic"
     "math/rand"
-    _ "github.com/yellia1989/tex-go/tools/log"
+    "github.com/yellia1989/tex-go/tools/log"
 )
 
 type endpointManager struct {
@@ -175,8 +175,9 @@ func (epmgr *endpointManager) selectNextAdapter() (*adapterProxy, error) {
 }
 
 func (epmgr *endpointManager) close() {
-    for _, v := range epmgr.mAdapter {
+    for k, v := range epmgr.mAdapter {
         v.close() 
         <-v.done
+        log.FDebugf("adapter:%s has been closed", &k)
     }
 }

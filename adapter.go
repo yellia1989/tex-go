@@ -32,7 +32,7 @@ const (
 type adapterProxy struct {
     ep *Endpoint
     cli *net.Cli
-    done chan bool
+    done chan bool // 关闭通道
 
     mu sync.Mutex
     reqQueueLen int // 请求队列长度
@@ -41,7 +41,6 @@ type adapterProxy struct {
     failTotal uint32   // 请求失败总数
     consfailTotal uint32 // 持续失败总数
     active int32 // 是否可用标志
-    isclose int32 // 是否关闭标志
     nextTryTime int64 // active=0时下一次重连时间
     connfailed int32 // 是否是连接失败
 
@@ -185,35 +184,35 @@ func (adapter *adapterProxy) Recv(pkg []byte) {
 
 func (adapter *adapterProxy) checkActive() {
     loop := time.NewTicker(adapterActiveInterval)
-    for range loop.C {
-        // 优雅退出标志
-        if atomic.LoadInt32(&adapter.isclose) == 1 {
-            loop.Stop()
+    for {
+        select {
+        case <-adapter.done:
             adapter.done <- true
             break
-        }
-
-        // 持续失败达到一定次数后强制关闭连接
-        consfailTotal := atomic.LoadUint32(&adapter.consfailTotal)
-        if consfailTotal >= adapterConsfail {
-            adapter.setInactive(0)
-            log.FDebugf("disable connection(cont fail), continuous fail:%d, adapter:%s", consfailTotal, adapter.ep)
-            continue
-        }
-        // 调用次数总量达到一定失败比例后强制关闭连接
-        failTotal := atomic.LoadUint32(&adapter.failTotal)
-        sendTotal := atomic.LoadUint32(&adapter.sendTotal)
-        if failTotal >= adapterMinfail && (failTotal / sendTotal >= adapterFailpation) {
-            adapter.setInactive(0)
-            log.FDebugf("disable connection(statbility), fail:%d, total:%d, adapter:%s", failTotal, sendTotal, adapter.ep)
-            continue
+        case <-loop.C:
+            // 持续失败达到一定次数后强制关闭连接
+            consfailTotal := atomic.LoadUint32(&adapter.consfailTotal)
+            if consfailTotal >= adapterConsfail {
+                adapter.setInactive(0)
+                log.FDebugf("disable connection(cont fail), continuous fail:%d, adapter:%s", consfailTotal, adapter.ep)
+                continue
+            }
+            // 调用次数总量达到一定失败比例后强制关闭连接
+            failTotal := atomic.LoadUint32(&adapter.failTotal)
+            sendTotal := atomic.LoadUint32(&adapter.sendTotal)
+            if failTotal >= adapterMinfail && (failTotal / sendTotal >= adapterFailpation) {
+                adapter.setInactive(0)
+                log.FDebugf("disable connection(statbility), fail:%d, total:%d, adapter:%s", failTotal, sendTotal, adapter.ep)
+                continue
+            }
         }
     }
+    loop.Stop()
 }
 
 func (adapter *adapterProxy) close() {
     adapter.setInactive(0)
-    atomic.StoreInt32(&adapter.isclose, 1)
+    adapter.done <- true
 }
 
 func (adapter *adapterProxy) setInactive(connfailed int32) {
@@ -224,6 +223,7 @@ func (adapter *adapterProxy) setInactive(connfailed int32) {
     atomic.StoreInt64(&adapter.nextTryTime, time.Now().Add(adapterTrytime).Unix())
     atomic.StoreInt32(&adapter.connfailed, connfailed)
     adapter.cli.Close()
+    log.FDebugf("close adapter:%s", adapter.ep)
 }
 
 func newAdapter(ep *Endpoint) (*adapterProxy, error) {

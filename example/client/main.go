@@ -17,13 +17,13 @@ func main() {
     }()
 
     echoPrx := new(echo.EchoService)
-    comm.StringToProxy("test.EchoServer.EchoServiceObj@tcp -h 127.0.0.1 -p 8080 -t 3600000", echoPrx)
+    comm.StringToProxy("test.EchoServer.EchoServiceObj@tcp -h 127.0.0.1 -p 9000 -t 3600000", echoPrx)
 
     var resp string
     err := echoPrx.Hello("yellia", &resp)
     if err != nil {
         log.Errorf("err:%s", err)
     } else {
-        log.Debugf("resp:%s\n", resp)
+        log.Debugf("resp:%s", resp)
     }
 }
