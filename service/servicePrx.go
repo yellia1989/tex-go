@@ -4,7 +4,7 @@ import (
     "time"
     "strings"
     "sync/atomic"
-    "github.com/yellia1989/tex-go/protocol/protocol"
+    "github.com/yellia1989/tex-go/service/protocol/protocol"
     "github.com/yellia1989/tex-go/tools/log"
 )
 

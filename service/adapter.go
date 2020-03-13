@@ -14,7 +14,7 @@ import (
     "fmt"
     "time"
     "encoding/binary"
-    "github.com/yellia1989/tex-go/protocol/protocol"
+    "github.com/yellia1989/tex-go/service/protocol/protocol"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
     "github.com/yellia1989/tex-go/tools/net"
     "github.com/yellia1989/tex-go/tools/log"
