@@ -6,7 +6,7 @@ import (
     "os"
     "syscall"
     "os/signal"
-    tex "github.com/yellia1989/tex-go"
+    tex "github.com/yellia1989/tex-go/service"
     "github.com/yellia1989/tex-go/tools/log"
     "github.com/yellia1989/tex-go/example/server/echo"
 )
