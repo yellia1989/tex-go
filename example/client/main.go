@@ -58,9 +58,8 @@ func main() {
                     var resp string
                     start := time.Now()
                     err := echoPrx.Hello("hello", &resp)
-                    q.add(time.Since(start))
-                    if err != nil {
-                        log.Errorf("err:%s", err)
+                    if err == nil {
+                        q.add(time.Since(start))
                     }
                 }
             }

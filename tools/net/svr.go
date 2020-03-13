@@ -188,8 +188,7 @@ type Svr struct {
     netHandle netHandle // 网络字节流处理
     workPool *gpool.Pool // 工作线程
 
-    muQueue sync.Mutex
-    queueSize int // 工作队列长度
+    queueSize int32 // 工作队列长度
 
     mu sync.Mutex
     id uint32 // conn auto incr id
@@ -325,25 +324,21 @@ func (s *Svr) SendToAll(pkg []byte) {
 
 func (s *Svr) recvPkg(c *Conn, pkg []byte) {
     overload := false
-    s.muQueue.Lock()
-    if s.queueSize > s.cfg.WorkQueueCap {
+    queueSize := atomic.LoadInt32(&s.queueSize)
+    if queueSize > int32(s.cfg.WorkQueueCap) {
         // 超过服务器负载直接丢弃
-        s.muQueue.Unlock()
         return
     }
-    if s.queueSize > s.cfg.WorkQueueCap/2 {
+    atomic.AddInt32(&s.queueSize, 1)
+    if queueSize > int32(s.cfg.WorkQueueCap)/2 {
         overload = true
     }
-    s.queueSize += 1
-    s.muQueue.Unlock()
 
     ctx := contextWithCurrent(context.Background(), c)
     recvTime := time.Now()
     handler := func() {
         defer func() {
-            s.muQueue.Lock()
-            s.queueSize -= 1
-            s.muQueue.Unlock()
+            atomic.AddInt32(&s.queueSize, -1)
         }()
         timeout := recvTime.Add(s.cfg.WorkQueueTimeout).Before(time.Now())
         s.pkgHandle.HandleRecv(ctx, pkg, overload, timeout)
