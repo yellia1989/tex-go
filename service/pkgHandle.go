@@ -10,6 +10,7 @@ import (
 )
 
 type texSvrPkgHandle struct {
+    name string
     service Service
     serviceImpl interface{}
 }
@@ -40,6 +41,13 @@ func (h *texSvrPkgHandle) HandleRecv(ctx context.Context, pkg []byte, overload b
     if err := req.ReadStruct(up); err != nil {
         log.FErrorf("peer: %s:%d parse RequestPacket err:%s", current.IP, current.Port, err.Error())
         current.Close()
+        return
+    }
+
+    // 服务名称不匹配
+    if h.name != req.SServiceName {
+        log.FErrorf("handle dismatch servicename, peer: %s:%d, obj: %s,func: %s,reqid: %d", current.IP, current.Port, req.SServiceName, req.SFuncName, req.IRequestId)
+        current.SendTexResponse(protocol.SDPSERVERNOSERVICEERR, nil)
         return
     }
 

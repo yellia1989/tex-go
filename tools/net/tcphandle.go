@@ -22,12 +22,12 @@ func (h *tcpHandle) Run() {
     cfg := h.svr.cfg
     addr, err := net.ResolveTCPAddr("tcp4", cfg.Address)
     if err != nil {
-        log.FErrorf("listen on %s failed", cfg.Address)
+        log.FError(err.Error())
         return
     }
     h.lis, err = net.ListenTCP("tcp4", addr)
     if err != nil {
-        log.FErrorf("listen on %s failed", cfg.Address)
+        log.FError(err.Error())
         return
     }
     log.FDebugf("start listen on:%s", addr)

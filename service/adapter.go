@@ -13,6 +13,7 @@ import (
     "strconv"
     "fmt"
     "time"
+    "errors"
     "encoding/binary"
     "github.com/yellia1989/tex-go/service/protocol/protocol"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
@@ -32,7 +33,7 @@ const (
 type adapterProxy struct {
     ep *Endpoint
     cli *net.Cli
-    done chan bool
+    done chan bool // 关闭通道
 
     mu sync.Mutex
     reqQueueLen int // 请求队列长度
@@ -41,7 +42,6 @@ type adapterProxy struct {
     failTotal uint32   // 请求失败总数
     consfailTotal uint32 // 持续失败总数
     active int32 // 是否可用标志
-    isclose int32 // 是否关闭标志
     nextTryTime int64 // active=0时下一次重连时间
     connfailed int32 // 是否是连接失败
 
@@ -49,8 +49,6 @@ type adapterProxy struct {
 }
 
 func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.ResponsePacket) error {
-    log.FDebugf("req:%v", *req)
-
     // 请求队列已经达到最大值,直接报错
     mu := &adapter.mu
     mu.Lock()
@@ -80,24 +78,16 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         // 注意:
         // send发送是阻塞的，所以当服务不可用时会有大量的消息阻塞在这,
         // 直到达到cliCfg配置的消息上限
-        *resp = protocol.ResponsePacket{
-            IRequestId: req.IRequestId,
-            IRet: protocol.SDPPROXYCONNECTERR,
-        }
-        log.FErrorf("connect to adapter:%s err:%s", adapter.ep, err.Error())
-        return nil
+        return fmt.Errorf("connect err:%s", err.Error())
     }
 
     select {
     case <-rtimer.After(time.Duration(req.ITimeout) * time.Millisecond):
         // 请求超时，取消请求
-        *resp = protocol.ResponsePacket{
-            IRequestId: req.IRequestId,
-            IRet: protocol.SDPASYNCCALLTIMEOUT,
-        }
         atomic.AddUint32(&adapter.failTotal, 1)
         atomic.AddUint32(&adapter.consfailTotal, 1)
         log.FErrorf("wait for response timeout, reqid:%d, adapter:%s", req.IRequestId, adapter.ep)
+        return errors.New("req timeout")
     case resp2 := <-ch:
         // 收到回复
         atomic.StoreUint32(&adapter.consfailTotal, 0)
@@ -105,7 +95,7 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         if resp2.IRet == protocol.SDPSERVERSUCCESS {
             *resp = *resp2
         } else {
-            return fmt.Errorf("remote server err:%d", resp2.IRet)
+            return fmt.Errorf("remote server err, ret:%d", resp2.IRet)
         }
     }
 
@@ -130,6 +120,8 @@ func (adapter *adapterProxy) send(req *protocol.RequestPacket) error {
 
     // 只统计发送成功的
     atomic.AddUint32(&adapter.sendTotal, 1)
+
+    log.FDebugf("push request(send), reqid:%d, adapter:%s", req.IRequestId, adapter.ep)
 
     return nil
 }
@@ -185,35 +177,35 @@ func (adapter *adapterProxy) Recv(pkg []byte) {
 
 func (adapter *adapterProxy) checkActive() {
     loop := time.NewTicker(adapterActiveInterval)
-    for range loop.C {
-        // 优雅退出标志
-        if atomic.LoadInt32(&adapter.isclose) == 1 {
-            loop.Stop()
+    for {
+        select {
+        case <-adapter.done:
             adapter.done <- true
             break
-        }
-
-        // 持续失败达到一定次数后强制关闭连接
-        consfailTotal := atomic.LoadUint32(&adapter.consfailTotal)
-        if consfailTotal >= adapterConsfail {
-            adapter.setInactive(0)
-            log.FDebugf("disable connection(cont fail), continuous fail:%d, adapter:%s", consfailTotal, adapter.ep)
-            continue
-        }
-        // 调用次数总量达到一定失败比例后强制关闭连接
-        failTotal := atomic.LoadUint32(&adapter.failTotal)
-        sendTotal := atomic.LoadUint32(&adapter.sendTotal)
-        if failTotal >= adapterMinfail && (failTotal / sendTotal >= adapterFailpation) {
-            adapter.setInactive(0)
-            log.FDebugf("disable connection(statbility), fail:%d, total:%d, adapter:%s", failTotal, sendTotal, adapter.ep)
-            continue
+        case <-loop.C:
+            // 持续失败达到一定次数后强制关闭连接
+            consfailTotal := atomic.LoadUint32(&adapter.consfailTotal)
+            if consfailTotal >= adapterConsfail {
+                adapter.setInactive(0)
+                log.FDebugf("disable connection(cont fail), continuous fail:%d, adapter:%s", consfailTotal, adapter.ep)
+                continue
+            }
+            // 调用次数总量达到一定失败比例后强制关闭连接
+            failTotal := atomic.LoadUint32(&adapter.failTotal)
+            sendTotal := atomic.LoadUint32(&adapter.sendTotal)
+            if failTotal >= adapterMinfail && (failTotal / sendTotal >= adapterFailpation) {
+                adapter.setInactive(0)
+                log.FDebugf("disable connection(statbility), fail:%d, total:%d, adapter:%s", failTotal, sendTotal, adapter.ep)
+                continue
+            }
         }
     }
+    loop.Stop()
 }
 
 func (adapter *adapterProxy) close() {
     adapter.setInactive(0)
-    atomic.StoreInt32(&adapter.isclose, 1)
+    adapter.done <- true
 }
 
 func (adapter *adapterProxy) setInactive(connfailed int32) {
@@ -224,6 +216,7 @@ func (adapter *adapterProxy) setInactive(connfailed int32) {
     atomic.StoreInt64(&adapter.nextTryTime, time.Now().Add(adapterTrytime).Unix())
     atomic.StoreInt32(&adapter.connfailed, connfailed)
     adapter.cli.Close()
+    log.FDebugf("close adapter:%s", adapter.ep)
 }
 
 func newAdapter(ep *Endpoint) (*adapterProxy, error) {

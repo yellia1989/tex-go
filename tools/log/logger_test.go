@@ -35,16 +35,9 @@ func TestGetLogList(t *testing.T) {
 
 //BenchmarkRogger benchmark rogger writes.
 func BenchmarkRogger(b *testing.B) {
+    b.ReportAllocs() 
 	SetLevel(DEBUG)
-	bs := make([]byte, 1024)
-	longmsg := string(bs)
-	lg := GetLogger("rogger")
-	lg.SetFileRoller("./logs", 10, 100)
 	for i := 0; i < b.N; i++ {
-		lg.Debug("debugxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-		lg.Info(longmsg)
-		lg.Warn("warn")
-		lg.Error("ERROR")
+		Debug("hello")
 	}
-	FlushLogger()
 }

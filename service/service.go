@@ -4,6 +4,7 @@ import (
     "sync"
     "fmt"
     "context"
+    "time"
     "github.com/yellia1989/tex-go/tools/net"
     "github.com/yellia1989/tex-go/tools/log"
     "github.com/yellia1989/tex-go/service/protocol/protocol"
@@ -45,6 +46,8 @@ func startServer() (err error) {
             err = fmt.Errorf("%s", perr)
         }
     }()
+    
+    ch := make(chan string)
     for k, v := range services {
         cfg, ok := servicesCfg[k]
         if !ok {
@@ -61,6 +64,7 @@ func startServer() (err error) {
             IdleTimeout: cfg.endpoint.Idletimeout,
             TCPNoDelay: true,
         },&texSvrPkgHandle{
+            name: k,
             service: v.service,
             serviceImpl: v.serviceImpl,
         })
@@ -72,8 +76,17 @@ func startServer() (err error) {
             svr.Run()
             log.FDebugf("service:%s stop", service)
             svrDone.Done()
+            ch <- service
         }(k)
     }
+
+    // 等待2秒所有服务器监听成功
+    select {
+    case name := <-ch:
+        err = fmt.Errorf("start service:%s failed", name)
+    case <-time.After(time.Second * 2):
+    }
+
     return
 }
 

@@ -6,6 +6,7 @@ import (
    "sync"
    "fmt"
    "io"
+   "errors"
    "github.com/yellia1989/tex-go/tools/log"
 )
 
@@ -57,10 +58,17 @@ func (cli *Cli) Send(pkg []byte) error {
             return err
         }
     }
+    cli.mu.Unlock()
+
+    cli.mu.Lock()
+    if cli.close {
+        cli.mu.Unlock()
+        return errors.New("conn has been closed")
+    }
+    cli.writech <- pkg
     cli.idleTime = time.Now()
     cli.mu.Unlock()
 
-    cli.writech <- pkg
     return nil
 }
 
@@ -129,7 +137,13 @@ func (cli *Cli) doWrite() {
             for {
                 n, err := cli.conn.Write(pkg)
                 if err != nil {
-                    log.FErrorf("write err:%s", err.Error())
+                    cli.mu.Lock()
+                    close := cli.close
+                    cli.mu.Unlock()
+                    if !close {
+                        // 走到这,说明连接已经被主动关闭了,不用报错
+                        log.FErrorf("write err:%s", err.Error())
+                    }
                     return
                 }
                 if n > 0 {
@@ -171,7 +185,13 @@ func (cli *Cli) doRead() {
             if (err == io.EOF) {
                 log.FDebugf("conn has been closed by server:%s", err.Error())
             } else {
-                log.FErrorf("read err:%s", err.Error())
+                cli.mu.Lock()
+                close := cli.close
+                cli.mu.Unlock()
+                if !close {
+                    // 走到这,说明连接已经被主动关闭了,不用报错
+                    log.FErrorf("read err:%s", err.Error())
+                }
             }
             return
         }

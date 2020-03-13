@@ -46,14 +46,14 @@ func Run(svr app) {
         return
     }
 
-    // 初始化应用程序
-    svr.Init()
-
     // 开启服务器
     if err := startServer(); err != nil {
         log.FErrorf("start server err:%s", err.Error())
         return
     }
+
+    // 初始化应用程序
+    svr.Init()
 
     // 监听信号
     c := make(chan os.Signal)

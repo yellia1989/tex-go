@@ -4,10 +4,12 @@ import (
     "context"
     "strings"
     "strconv"
+    "time"
     "sync/atomic"
     "encoding/binary"
     "github.com/yellia1989/tex-go/service/protocol/protocol"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
+    "github.com/yellia1989/tex-go/tools/log"
 )
 
 type Current struct {
@@ -17,6 +19,7 @@ type Current struct {
     rsp int32    // 是否立即响应当前请求
     svr *Svr    // 服务器
     Request protocol.RequestPacket
+    start time.Time
 }
 
 func (c *Current) SendResponse(pkg []byte) {
@@ -39,6 +42,8 @@ func (c *Current) SendTexResponse(ret int32, pkg []byte) {
     copy(b2[4:], b1)
 
     c.svr.Send(c.ID, b2)
+
+    log.FDebugf("resp cost:%dms", time.Since(c.start).Milliseconds())
 }
 
 func (c *Current) Close() {
@@ -60,6 +65,7 @@ func contextWithCurrent(ctx context.Context, conn *Conn) context.Context {
     current.IP = tmp[0]
     current.Port,_ = strconv.Atoi(tmp[1])
     current.svr = conn.svr
+    current.start = time.Now()
     return context.WithValue(ctx, 0x484900, current)
 }
 
