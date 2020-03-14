@@ -53,6 +53,23 @@ type structInfo struct {
     members []structMember
 }
 
+// 接口类型
+type argInfo struct {
+    name string
+    ty *varType
+    out bool
+}
+type funcInfo struct {
+    name string
+    hasRet bool
+    retTy *varType
+    args []argInfo
+}
+type interfaceInfo struct {
+    name string
+    funcs []funcInfo
+}
+
 type parse struct {
     file string // 要解析的文件
 
@@ -71,6 +88,8 @@ type parse struct {
     enums []enumInfo
     // 结构体
     structs []structInfo
+    // 接口
+    interfaces []interfaceInfo
 
     lex *LexState // 词法分析器
     t *Token // 当前token
@@ -104,7 +123,7 @@ func (p *parse) next() {
 func (p *parse) expect(t TK) {
     p.next()
     if p.t.T != t {
-        p.parseErr("expect " + TokenMap[t])
+        p.parseErr("expect " + TokenMap[t] + " real:" + TokenMap[p.t.T])
     }
 }
 
@@ -144,6 +163,8 @@ func (p *parse) parseModule() {
             p.parseEnum()
         case tkStruct:
             p.parseStruct()
+        case tkInterface:
+            p.parseInterface()
         default:
             p.parseErr("parse module error, not expected " + TokenMap[t.T])
         }
@@ -418,6 +439,82 @@ func (p *parse) parseStructMemberDefault(member *structMember) {
     default:
         p.parseErr("unsupported default value type " + TokenMap[p.t.T])
     }
+}
+
+func (p *parse) parseInterface() {
+    itf := interfaceInfo{}
+    p.expect(tkName)
+    itf.name = p.t.S.S
+
+    for _, v := range p.interfaces {
+        if v.name == itf.name {
+            p.parseErr(itf.name + " Redefine")
+        }
+    }
+    p.expect(tkBracel)
+
+    for {
+        f := p.parseInterfaceFunc()
+        if f == nil {
+            break
+        }
+        itf.funcs = append(itf.funcs, *f)
+    }
+    p.expect(tkSemi)
+    p.interfaces = append(p.interfaces, itf)
+}
+
+func (p *parse) parseInterfaceFunc() *funcInfo {
+    p.next()
+    if p.t.T == tkBracer {
+        return nil
+    }
+
+    f := &funcInfo{}
+    if p.t.T == tkVoid {
+        f.hasRet = false
+    } else if !isType(p.t.T) && p.t.T != tkName && p.t.T != tkUnsigned {
+        p.parseErr("expect type")
+    } else {
+        f.hasRet = true
+        f.retTy = p.parseType()
+    }
+
+    p.expect(tkName)
+    f.name = p.t.S.S
+    p.expect(tkPtl)
+
+    p.next()
+    if p.t.T == tkPtr {
+        // 没有参数，直接返回
+        p.expect(tkSemi)
+        return f
+    }
+
+    for {
+        arg := argInfo{}
+        if p.t.T == tkOut {
+            arg.out = true
+            p.next()
+        }
+        arg.ty = p.parseType()
+
+        p.expect(tkName)
+        arg.name = p.t.S.S
+        f.args = append(f.args, arg)
+
+        p.next()
+        if p.t.T == tkComma {
+            p.next()
+        } else if p.t.T == tkPtr {
+            p.expect(tkSemi)
+            break
+        } else {
+            p.parseErr("exepct , or )")
+        }
+    }
+
+    return f
 }
 
 func (p *parse) analyzeDepend() {

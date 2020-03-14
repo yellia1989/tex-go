@@ -1,11 +1,5 @@
-#include "test2.sdp"
-
 module test
 {
-    struct requireStruct {
-        0   require test2::simpleStruct ss;
-    };
-
     struct defaultStruct {
         0   optional bool b = true;
         1   optional byte by = 1;
@@ -13,5 +7,11 @@ module test
         3   optional int i = 1;
         4   optional long l = 0x0FFFFFFFFFFFFFFF;
         5   optional string ss = "yellia";
+    };
+
+    interface service {
+        double h2elloint(int b, out int c);
+        void hello(string a, string b, string c, out defaultStruct d);
+        int helloint(int b, out int c);
     };
 };
