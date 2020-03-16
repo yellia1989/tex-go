@@ -103,10 +103,8 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
 }
 
 func (adapter *adapterProxy) send(req *protocol.RequestPacket) error {
-    p := codec.NewPacker()
-    req.WriteStructFromTag(p, 0, true)
+    b1 := codec.SdpToString(req)
 
-    b1 := p.ToBytes()
     total := len(b1)+4
     b2 := make([]byte, total)
     binary.BigEndian.PutUint32(b2, uint32(total))
@@ -157,13 +155,14 @@ func (adapter *adapterProxy) Parse(bytes []byte) (int,int) {
 }
 
 func (adapter *adapterProxy) Recv(pkg []byte) {
-    up := codec.NewUnPacker(pkg[4:])
+    defer func() {
+        err := recover()
+        if err != nil {
+            log.FErrorf("parse ResponsePacket err:%v, adapter:%s", err, adapter.ep)
+        }
+    }()
     resp := &protocol.ResponsePacket{}
-    resp.ResetDefault()
-    if err := resp.ReadStructFromTag(up, 0, true); err != nil {
-        log.FErrorf("parse ResponsePacket err:%s, adapter:%s", err.Error(), adapter.ep)
-        return
-    }
+    codec.StringToSdp(pkg[4:], resp)
 
     req, ok := adapter.req.Load(resp.IRequestId)
     if !ok {

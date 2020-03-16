@@ -26,16 +26,14 @@ func (c *Current) SendResponse(pkg []byte) {
 }
 
 func (c *Current) SendTexResponse(ret int32, pkg []byte) {
-    p := codec.NewPacker()
     resp := protocol.ResponsePacket{}
     resp.ResetDefault()
     resp.IRet = ret
     resp.IRequestId = c.Request.IRequestId
     resp.SRspPayload = string(pkg)
 
-    resp.WriteStructFromTag(p, 0, true)
+    b1 := codec.SdpToString(&resp)
 
-    b1 := p.ToBytes()
     total := len(b1)+4
     b2 := make([]byte, total)
     binary.BigEndian.PutUint32(b2, uint32(total))

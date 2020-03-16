@@ -36,13 +36,16 @@ func (h *texSvrPkgHandle) Parse(bytes []byte) (int, int) {
 
 func (h *texSvrPkgHandle) HandleRecv(ctx context.Context, pkg []byte, overload bool, queuetimeout bool) {
     current := net.ContextGetCurrent(ctx)
-    up := codec.NewUnPacker(pkg[4:])
     req := &current.Request
-    if err := req.ReadStructFromTag(up, 0, true); err != nil {
-        log.FErrorf("peer: %s:%d parse RequestPacket err:%s", current.IP, current.Port, err.Error())
-        current.Close()
-        return
-    }
+
+    defer func() {
+        err := recover()
+        if err != nil {
+            log.FErrorf("peer: %s:%d parse RequestPacket err:%s", current.IP, current.Port, err)
+            current.Close()
+        }
+    }()
+    codec.StringToSdp(pkg[4:], req)
 
     // 服务名称不匹配
     if h.name != req.SServiceName {

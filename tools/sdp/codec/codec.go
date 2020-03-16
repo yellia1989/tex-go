@@ -537,3 +537,28 @@ func NewPacker() *Packer {
 func NewUnPacker(buf []byte) *UnPacker {
     return &UnPacker{buf: bytes.NewReader(buf)}
 }
+
+// 工具函数方便结构体的解析
+type SdpStructITF interface {
+    ReadStructFromTag(up *UnPacker, tag uint32, require bool) error
+    WriteStructFromTag(p *Packer, tag uint32, require bool) error
+    //Visit(out *bytes.Buffer) error
+}
+func StringToSdp(buf []byte, st SdpStructITF) {
+    up := NewUnPacker(buf)
+    err := st.ReadStructFromTag(up, 0, true)
+    if err != nil {
+        panic("not a sdp struct")
+    }
+}
+func SdpToString(st SdpStructITF) []byte {
+    p := NewPacker()
+    err := st.WriteStructFromTag(p, 0, true)
+    if err != nil {
+        panic("not a sdp struct")
+    }
+    return p.ToBytes()
+}
+func PrintSdp(st SdpStructITF) []byte {
+    return nil
+}
