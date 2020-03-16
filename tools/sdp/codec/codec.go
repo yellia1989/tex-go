@@ -25,18 +25,22 @@ type Packer struct {
     buf *bytes.Buffer
 }
 
-func (p *Packer) writeData(buf []byte) error {
+func (p *Packer) WriteData(buf []byte) error {
     _, err := p.buf.Write(buf)
     return err
 }
 
 func (p *Packer) WriteHeader(tag uint32, ty uint32) error {
     if tag < 15 {
-        data := (ty << 4) | tag
-        return p.WriteNumber32(data)
+        b := byte((ty << 4) | tag)
+        data := make([]byte,1)
+        data[0] = b
+        return p.WriteData(data)
     }
-    data := (ty << 4) | 0x0F
-    if err := p.WriteNumber32(data); err != nil {
+    b := byte((ty << 4) | 0x0F)
+    data := make([]byte,1)
+    data[0] = b
+    if err := p.WriteData(data); err != nil {
         return err
     }
     return p.WriteNumber32(tag)
@@ -47,7 +51,7 @@ func (p *Packer) WriteNumber32(v uint32) error {
     var bs []byte
     bs = b[:]
     n := binary.PutUvarint(bs, uint64(v))
-    return p.writeData(bs[0:n])
+    return p.WriteData(bs[0:n])
 }
 
 func (p *Packer) WriteNumber64(v uint64) error {
@@ -55,7 +59,7 @@ func (p *Packer) WriteNumber64(v uint64) error {
     var bs []byte
     bs = b[:]
     n := binary.PutUvarint(bs, v)
-    return p.writeData(bs[0:n])
+    return p.WriteData(bs[0:n])
 }
 
 func (p *Packer) WriteBool(tag uint32, v bool) error {
@@ -155,6 +159,14 @@ func (p *Packer) Grow(n int) {
 
 func (p *Packer) Reset() {
     p.buf.Reset()
+}
+
+func (p *Packer) Len() int {
+    return p.buf.Len()
+}
+
+func (p *Packer) Truncate(n int) {
+    p.buf.Truncate(n)
 }
 
 type UnPacker struct {
