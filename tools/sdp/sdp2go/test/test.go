@@ -81,9 +81,7 @@ func (st *SimpleStruct) ReadStruct(up *codec.UnPacker) error {
 		return err
 	}
 	if ty != codec.SdpType_Vector {
-
 		return fmt.Errorf("tag:%d got wrong type %d", 11, ty)
-
 	}
 
 	_, length, err = up.ReadNumber32()
@@ -103,9 +101,7 @@ func (st *SimpleStruct) ReadStruct(up *codec.UnPacker) error {
 		return err
 	}
 	if ty != codec.SdpType_Map {
-
 		return fmt.Errorf("tag:%d got wrong type %d", 12, ty)
-
 	}
 
 	_, length, err = up.ReadNumber32()
@@ -297,18 +293,20 @@ func (st *SimpleStruct) WriteStructFromTag(p *codec.Packer, tag uint32, require 
 			return err
 		}
 	} else {
-		oldsize := p.Len()
-		err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+		p2 := codec.NewPacker()
+		err = st.WriteStruct(p2)
 		if err != nil {
 			return err
 		}
-		err = st.WriteStruct(p)
-		if err != nil {
-			return err
-		}
-		if oldsize == p.Len() {
-			p.Truncate(oldsize)
-		} else {
+		if p2.Len() != 0 {
+			err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+			if err != nil {
+				return err
+			}
+			err = p.WriteData(p2.ToBytes())
+			if err != nil {
+				return err
+			}
 			err = p.WriteHeader(0, codec.SdpType_StructEnd)
 			if err != nil {
 				return err
@@ -324,6 +322,7 @@ type RequireStruct struct {
 }
 
 func (st *RequireStruct) ResetDefault() {
+	st.Ss.ResetDefault()
 }
 func (st *RequireStruct) ReadStruct(up *codec.UnPacker) error {
 	var err error
@@ -398,18 +397,20 @@ func (st *RequireStruct) WriteStructFromTag(p *codec.Packer, tag uint32, require
 			return err
 		}
 	} else {
-		oldsize := p.Len()
-		err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+		p2 := codec.NewPacker()
+		err = st.WriteStruct(p2)
 		if err != nil {
 			return err
 		}
-		err = st.WriteStruct(p)
-		if err != nil {
-			return err
-		}
-		if oldsize == p.Len() {
-			p.Truncate(oldsize)
-		} else {
+		if p2.Len() != 0 {
+			err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+			if err != nil {
+				return err
+			}
+			err = p.WriteData(p2.ToBytes())
+			if err != nil {
+				return err
+			}
 			err = p.WriteHeader(0, codec.SdpType_StructEnd)
 			if err != nil {
 				return err
@@ -562,18 +563,20 @@ func (st *DefaultStruct) WriteStructFromTag(p *codec.Packer, tag uint32, require
 			return err
 		}
 	} else {
-		oldsize := p.Len()
-		err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+		p2 := codec.NewPacker()
+		err = st.WriteStruct(p2)
 		if err != nil {
 			return err
 		}
-		err = st.WriteStruct(p)
-		if err != nil {
-			return err
-		}
-		if oldsize == p.Len() {
-			p.Truncate(oldsize)
-		} else {
+		if p2.Len() != 0 {
+			err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+			if err != nil {
+				return err
+			}
+			err = p.WriteData(p2.ToBytes())
+			if err != nil {
+				return err
+			}
 			err = p.WriteHeader(0, codec.SdpType_StructEnd)
 			if err != nil {
 				return err

@@ -3,7 +3,7 @@ package main
 import (
     tex "github.com/yellia1989/tex-go/service"
     "github.com/yellia1989/tex-go/tools/log"
-    "github.com/yellia1989/tex-go/example/server/echo"
+    "github.com/yellia1989/tex-go/example/rpc/server/echo"
 )
 
 type EchoServer struct {

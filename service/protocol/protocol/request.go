@@ -70,7 +70,7 @@ func (st *RequestPacket) ReadStruct(up *codec.UnPacker) error {
 			return err
 		}
 		var v string
-		err = up.ReadString(&v, 1, true)
+		err = up.ReadString(&v, 0, true)
 		if err != nil {
 			return err
 		}
@@ -114,69 +114,108 @@ func (st *RequestPacket) ReadStructFromTag(up *codec.UnPacker, tag uint32, requi
 func (st *RequestPacket) WriteStruct(p *codec.Packer) error {
 	var err error
 	var length int
-	err = p.WriteBool(0, st.BIsOneWay)
-	if err != nil {
-		return err
-	}
-	err = p.WriteUint32(1, st.IRequestId)
-	if err != nil {
-		return err
-	}
-	err = p.WriteString(2, st.SServiceName)
-	if err != nil {
-		return err
-	}
-	err = p.WriteString(3, st.SFuncName)
-	if err != nil {
-		return err
-	}
-	err = p.WriteString(4, st.SReqPayload)
-	if err != nil {
-		return err
-	}
-	err = p.WriteUint32(5, st.ITimeout)
-	if err != nil {
-		return err
-	}
-
-	err = p.WriteHeader(6, codec.SdpType_Map)
-	if err != nil {
-		return err
-	}
-	length = len(st.Context)
-	err = p.WriteNumber32(uint32(length))
-	if err != nil {
-		return err
-	}
-	for _k, _v := range st.Context {
-		err = p.WriteString(0, _k)
+	if false || st.BIsOneWay != false {
+		err = p.WriteBool(0, st.BIsOneWay)
 		if err != nil {
 			return err
 		}
-		err = p.WriteString(1, _v)
+	}
+	if false || st.IRequestId != 0 {
+		err = p.WriteUint32(1, st.IRequestId)
 		if err != nil {
 			return err
+		}
+	}
+	if false || st.SServiceName != "" {
+		err = p.WriteString(2, st.SServiceName)
+		if err != nil {
+			return err
+		}
+	}
+	if false || st.SFuncName != "" {
+		err = p.WriteString(3, st.SFuncName)
+		if err != nil {
+			return err
+		}
+	}
+	if false || st.SReqPayload != "" {
+		err = p.WriteString(4, st.SReqPayload)
+		if err != nil {
+			return err
+		}
+	}
+	if false || st.ITimeout != 0 {
+		err = p.WriteUint32(5, st.ITimeout)
+		if err != nil {
+			return err
+		}
+	}
+
+	length = len(st.Context)
+	if false || length != 0 {
+		err = p.WriteHeader(6, codec.SdpType_Map)
+		if err != nil {
+			return err
+		}
+		err = p.WriteNumber32(uint32(length))
+		if err != nil {
+			return err
+		}
+		for _k, _v := range st.Context {
+			if true || _k != "" {
+				err = p.WriteString(0, _k)
+				if err != nil {
+					return err
+				}
+			}
+			if true || _v != "" {
+				err = p.WriteString(0, _v)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
 	_ = length
 	return err
 }
-func (st *RequestPacket) WriteStructFromTag(p *codec.Packer, tag uint32) error {
+func (st *RequestPacket) WriteStructFromTag(p *codec.Packer, tag uint32, require bool) error {
 	var err error
 
-	err = p.WriteHeader(tag, codec.SdpType_StructBegin)
-	if err != nil {
-		return err
-	}
-
-	err = st.WriteStruct(p)
-	if err != nil {
-		return err
-	}
-	err = p.WriteHeader(0, codec.SdpType_StructEnd)
-	if err != nil {
-		return err
+	if require {
+		err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+		if err != nil {
+			return err
+		}
+		err = st.WriteStruct(p)
+		if err != nil {
+			return err
+		}
+		err = p.WriteHeader(0, codec.SdpType_StructEnd)
+		if err != nil {
+			return err
+		}
+	} else {
+		p2 := codec.NewPacker()
+		err = st.WriteStruct(p2)
+		if err != nil {
+			return err
+		}
+		if p2.Len() != 0 {
+			err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+			if err != nil {
+				return err
+			}
+			err = p.WriteData(p2.ToBytes())
+			if err != nil {
+				return err
+			}
+			err = p.WriteHeader(0, codec.SdpType_StructEnd)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -230,7 +269,7 @@ func (st *ResponsePacket) ReadStruct(up *codec.UnPacker) error {
 			return err
 		}
 		var v string
-		err = up.ReadString(&v, 1, true)
+		err = up.ReadString(&v, 0, true)
 		if err != nil {
 			return err
 		}
@@ -274,57 +313,90 @@ func (st *ResponsePacket) ReadStructFromTag(up *codec.UnPacker, tag uint32, requ
 func (st *ResponsePacket) WriteStruct(p *codec.Packer) error {
 	var err error
 	var length int
-	err = p.WriteInt32(0, st.IRet)
-	if err != nil {
-		return err
-	}
-	err = p.WriteUint32(1, st.IRequestId)
-	if err != nil {
-		return err
-	}
-	err = p.WriteString(2, st.SRspPayload)
-	if err != nil {
-		return err
-	}
-
-	err = p.WriteHeader(3, codec.SdpType_Map)
-	if err != nil {
-		return err
-	}
-	length = len(st.Context)
-	err = p.WriteNumber32(uint32(length))
-	if err != nil {
-		return err
-	}
-	for _k, _v := range st.Context {
-		err = p.WriteString(0, _k)
+	if false || st.IRet != 0 {
+		err = p.WriteInt32(0, st.IRet)
 		if err != nil {
 			return err
 		}
-		err = p.WriteString(1, _v)
+	}
+	if false || st.IRequestId != 0 {
+		err = p.WriteUint32(1, st.IRequestId)
 		if err != nil {
 			return err
+		}
+	}
+	if false || st.SRspPayload != "" {
+		err = p.WriteString(2, st.SRspPayload)
+		if err != nil {
+			return err
+		}
+	}
+
+	length = len(st.Context)
+	if false || length != 0 {
+		err = p.WriteHeader(3, codec.SdpType_Map)
+		if err != nil {
+			return err
+		}
+		err = p.WriteNumber32(uint32(length))
+		if err != nil {
+			return err
+		}
+		for _k, _v := range st.Context {
+			if true || _k != "" {
+				err = p.WriteString(0, _k)
+				if err != nil {
+					return err
+				}
+			}
+			if true || _v != "" {
+				err = p.WriteString(0, _v)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
 	_ = length
 	return err
 }
-func (st *ResponsePacket) WriteStructFromTag(p *codec.Packer, tag uint32) error {
+func (st *ResponsePacket) WriteStructFromTag(p *codec.Packer, tag uint32, require bool) error {
 	var err error
 
-	err = p.WriteHeader(tag, codec.SdpType_StructBegin)
-	if err != nil {
-		return err
-	}
-
-	err = st.WriteStruct(p)
-	if err != nil {
-		return err
-	}
-	err = p.WriteHeader(0, codec.SdpType_StructEnd)
-	if err != nil {
-		return err
+	if require {
+		err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+		if err != nil {
+			return err
+		}
+		err = st.WriteStruct(p)
+		if err != nil {
+			return err
+		}
+		err = p.WriteHeader(0, codec.SdpType_StructEnd)
+		if err != nil {
+			return err
+		}
+	} else {
+		p2 := codec.NewPacker()
+		err = st.WriteStruct(p2)
+		if err != nil {
+			return err
+		}
+		if p2.Len() != 0 {
+			err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+			if err != nil {
+				return err
+			}
+			err = p.WriteData(p2.ToBytes())
+			if err != nil {
+				return err
+			}
+			err = p.WriteHeader(0, codec.SdpType_StructEnd)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

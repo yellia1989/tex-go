@@ -4,7 +4,6 @@ package mfw
 
 import (
 	"context"
-	"fmt"
 	tex "github.com/yellia1989/tex-go/service"
 	"github.com/yellia1989/tex-go/service/protocol/protocol"
 	"github.com/yellia1989/tex-go/tools/log"
@@ -30,20 +29,20 @@ func (s *Query) GetEndpoints(sObj string, sDivision string, vActiveEps *[]string
 	var has bool
 	var ty uint32
 	var length uint32
-	if false || sObj != "" {
+	if true || sObj != "" {
 		err = p.WriteString(1, sObj)
 		if err != nil {
 			return ret, err
 		}
 	}
-	if false || sDivision != "" {
+	if true || sDivision != "" {
 		err = p.WriteString(2, sDivision)
 		if err != nil {
 			return ret, err
 		}
 	}
 	var rsp protocol.ResponsePacket
-	err = s.proxy.Invoke("GetEndpoints", p.ToBytes(), &rsp)
+	err = s.proxy.Invoke("getEndpoints", p.ToBytes(), &rsp)
 	if err != nil {
 		return ret, err
 	}
@@ -104,26 +103,26 @@ func (s *Query) AddEndpoint(sObj string, sDivision string, ep string) (int32, er
 	var has bool
 	var ty uint32
 	var length uint32
-	if false || sObj != "" {
+	if true || sObj != "" {
 		err = p.WriteString(1, sObj)
 		if err != nil {
 			return ret, err
 		}
 	}
-	if false || sDivision != "" {
+	if true || sDivision != "" {
 		err = p.WriteString(2, sDivision)
 		if err != nil {
 			return ret, err
 		}
 	}
-	if false || ep != "" {
+	if true || ep != "" {
 		err = p.WriteString(3, ep)
 		if err != nil {
 			return ret, err
 		}
 	}
 	var rsp protocol.ResponsePacket
-	err = s.proxy.Invoke("AddEndpoint", p.ToBytes(), &rsp)
+	err = s.proxy.Invoke("addEndpoint", p.ToBytes(), &rsp)
 	if err != nil {
 		return ret, err
 	}
@@ -144,26 +143,26 @@ func (s *Query) RemoveEndpoint(sObj string, sDivision string, ep string) (int32,
 	var has bool
 	var ty uint32
 	var length uint32
-	if false || sObj != "" {
+	if true || sObj != "" {
 		err = p.WriteString(1, sObj)
 		if err != nil {
 			return ret, err
 		}
 	}
-	if false || sDivision != "" {
+	if true || sDivision != "" {
 		err = p.WriteString(2, sDivision)
 		if err != nil {
 			return ret, err
 		}
 	}
-	if false || ep != "" {
+	if true || ep != "" {
 		err = p.WriteString(3, ep)
 		if err != nil {
 			return ret, err
 		}
 	}
 	var rsp protocol.ResponsePacket
-	err = s.proxy.Invoke("RemoveEndpoint", p.ToBytes(), &rsp)
+	err = s.proxy.Invoke("removeEndpoint", p.ToBytes(), &rsp)
 	if err != nil {
 		return ret, err
 	}
@@ -205,7 +204,7 @@ func _GetEndpointsImpl(ctx context.Context, serviceImpl interface{}, up *codec.U
 	if err != nil {
 		return err
 	}
-	if false || ret != 0 {
+	if true || ret != 0 {
 		err = p.WriteInt32(0, ret)
 		if err != nil {
 			return err
@@ -213,7 +212,7 @@ func _GetEndpointsImpl(ctx context.Context, serviceImpl interface{}, up *codec.U
 	}
 
 	length = len(p3)
-	if false || length != 0 {
+	if true || length != 0 {
 		err = p.WriteHeader(3, codec.SdpType_Vector)
 		if err != nil {
 			return err
@@ -233,7 +232,7 @@ func _GetEndpointsImpl(ctx context.Context, serviceImpl interface{}, up *codec.U
 	}
 
 	length = len(p4)
-	if false || length != 0 {
+	if true || length != 0 {
 		err = p.WriteHeader(4, codec.SdpType_Vector)
 		if err != nil {
 			return err
@@ -278,7 +277,7 @@ func _AddEndpointImpl(ctx context.Context, serviceImpl interface{}, up *codec.Un
 	if err != nil {
 		return err
 	}
-	if false || ret != 0 {
+	if true || ret != 0 {
 		err = p.WriteInt32(0, ret)
 		if err != nil {
 			return err
@@ -311,7 +310,7 @@ func _RemoveEndpointImpl(ctx context.Context, serviceImpl interface{}, up *codec
 	if err != nil {
 		return err
 	}
-	if false || ret != 0 {
+	if true || ret != 0 {
 		err = p.WriteInt32(0, ret)
 		if err != nil {
 			return err
@@ -332,19 +331,19 @@ func (s *Query) Dispatch(ctx context.Context, serviceImpl interface{}, req *prot
 
 	var err error
 	switch req.SFuncName {
-	case "GetEndpoints":
+	case "getEndpoints":
 		err = _GetEndpointsImpl(ctx, serviceImpl, up, p)
 		if err != nil {
 			break
 		}
 		texret = protocol.SDPSERVERSUCCESS
-	case "AddEndpoint":
+	case "addEndpoint":
 		err = _AddEndpointImpl(ctx, serviceImpl, up, p)
 		if err != nil {
 			break
 		}
 		texret = protocol.SDPSERVERSUCCESS
-	case "RemoveEndpoint":
+	case "removeEndpoint":
 		err = _RemoveEndpointImpl(ctx, serviceImpl, up, p)
 		if err != nil {
 			break

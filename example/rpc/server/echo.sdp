@@ -1,0 +1,7 @@
+module echo {
+
+interface EchoService {
+    void hello(string req, out string resp);
+};
+
+};

@@ -104,7 +104,7 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
 
 func (adapter *adapterProxy) send(req *protocol.RequestPacket) error {
     p := codec.NewPacker()
-    req.WriteStruct(p)
+    req.WriteStructFromTag(p, 0, true)
 
     b1 := p.ToBytes()
     total := len(b1)+4
@@ -159,7 +159,8 @@ func (adapter *adapterProxy) Parse(bytes []byte) (int,int) {
 func (adapter *adapterProxy) Recv(pkg []byte) {
     up := codec.NewUnPacker(pkg[4:])
     resp := &protocol.ResponsePacket{}
-    if err := resp.ReadStruct(up); err != nil {
+    resp.ResetDefault()
+    if err := resp.ReadStructFromTag(up, 0, true); err != nil {
         log.FErrorf("parse ResponsePacket err:%s, adapter:%s", err.Error(), adapter.ep)
         return
     }

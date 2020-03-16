@@ -17,7 +17,7 @@ func main() {
 
     var vActiveEps []string
     var vInactiveEps []string
-    ret, err := query.GetEndpoints("tex.mfwregistry.QueryObj", "", &vActiveEps, &vInactiveEps)
+    ret, err := query.GetEndpoints("aqua.GameServer.GameServiceObj", "aqua.zone.2", &vActiveEps, &vInactiveEps)
     if err != nil {
         log.Debugf("query err:%s", err.Error())
     } else if (ret != 0) {

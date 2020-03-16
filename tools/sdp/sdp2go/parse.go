@@ -5,6 +5,7 @@ import (
     "strconv"
     "sort"
     "strings"
+    "github.com/yellia1989/tex-go/tools/util"
 )
 
 // 类型
@@ -60,6 +61,7 @@ type argInfo struct {
     out bool
 }
 type funcInfo struct {
+    oldname string
     name string
     hasRet bool
     retTy *varType
@@ -77,6 +79,8 @@ type parse struct {
     module string
     // 依赖的模块名称
     dependModule map[string]bool
+    // 依赖的系统包名
+    imports []string
 
     // includes
     includes_ []string
@@ -94,6 +98,13 @@ type parse struct {
     lex *LexState // 词法分析器
     t *Token // 当前token
     lastT *Token  // 上一个token
+}
+
+func (p *parse) addImport(pkg string) {
+    if util.Contain(p.imports, pkg) {
+        return
+    }
+    p.imports = append(p.imports, pkg)
 }
 
 func (p *parse) parse() {
@@ -588,6 +599,51 @@ func newParse(file string) *parse {
 
     p := &parse{file: file, lex: NewLexState(file, content)}
     p.parse()
+
+    // 解析系统包名依赖
+    if len(p.interfaces) != 0 {
+        imports := []string{
+            `"context"`,
+            `"time"`,
+            `"github.com/yellia1989/tex-go/tools/sdp/codec"`,
+            `"github.com/yellia1989/tex-go/service/protocol/protocol"`,
+            `"github.com/yellia1989/tex-go/tools/net"`,
+            `"github.com/yellia1989/tex-go/tools/log"`,
+            `tex "github.com/yellia1989/tex-go/service"`,
+        }
+        for _, pkg := range imports {
+            p.addImport(pkg)
+        }
+        loop:
+        for _, itf := range p.interfaces {
+            for _, f := range itf.funcs {
+                for _, arg := range f.args {
+                    if arg.ty.ty == tkTVector || arg.ty.ty == tkTMap {
+                        p.addImport(`"fmt"`)
+                        break loop
+                    }
+                }
+            }
+        }
+    }
+    if len(p.structs) != 0 {
+        imports := []string{
+            `"github.com/yellia1989/tex-go/tools/sdp/codec"`,
+        }
+        for _, pkg := range imports {
+            p.addImport(pkg)
+        }
+        loop2:
+        for _, st := range p.structs {
+            for _, m := range st.members {
+                if m.ty.ty == tkTVector || m.ty.ty == tkTMap {
+                    p.addImport(`"fmt"`)
+                    break loop2
+                }
+            }
+        }
+    }
+    sort.Strings(p.imports)
 
     return p
 }

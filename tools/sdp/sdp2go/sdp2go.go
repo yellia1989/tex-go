@@ -43,6 +43,7 @@ func (st *structInfo) rename() {
 func (itf *interfaceInfo) rename() {
     itf.name = upperFirstLetter(itf.name)
     for i := range itf.funcs {
+        itf.funcs[i].oldname = itf.funcs[i].name
         itf.funcs[i].name = upperFirstLetter(itf.funcs[i].name)
     }
 }
@@ -65,26 +66,20 @@ func (s2g *sdp2Go) generate() {
     }
 
     // 生成include的go文件
-    hasInterface := len(s2g.p.interfaces) != 0
     s2g.Write("// 此文件为sdp2go工具自动生成,请不要手动编辑\n")
     s2g.Write("package " + s2g.p.module)
-    s2g.Write("import (")
-    if hasInterface {
-        s2g.Write(`"context"`)
-        s2g.Write(`"time"`)
+    if len(s2g.p.imports) != 0 || len(s2g.p.dependModule) != 0 {
+        s2g.Write("import (")
     }
-    s2g.Write(`"fmt"`)
-    s2g.Write(`"github.com/yellia1989/tex-go/tools/sdp/codec"`)
-    if hasInterface {
-        s2g.Write(`"github.com/yellia1989/tex-go/service/protocol/protocol"`)
-        s2g.Write(`"github.com/yellia1989/tex-go/tools/net"`)
-        s2g.Write(`"github.com/yellia1989/tex-go/tools/log"`)
-        s2g.Write(`tex "github.com/yellia1989/tex-go/service"`)
+    for _, p := range s2g.p.imports {
+        s2g.Write(p)
     }
     for m, _ := range s2g.p.dependModule {
         s2g.Write(`"`+ m +`"`)
     }
-    s2g.Write(")")
+    if len(s2g.p.imports) != 0 || len(s2g.p.dependModule) != 0 {
+        s2g.Write(")")
+    }
 
     // 生成枚举
     for _, v := range s2g.p.enums {
@@ -401,7 +396,7 @@ var err error
 switch req.SFuncName {`)
 
     for _, f := range v.funcs {
-        s2g.Write(`case "` + f.name + `":
+        s2g.Write(`case "` + f.oldname + `":
         err = _` + f.name + `Impl(ctx, serviceImpl, up, p)
         if err != nil {
             break
@@ -476,6 +471,7 @@ func (s2g *sdp2Go) genInterfaceFunc(itf *interfaceInfo, f *funcInfo) {
         dummy.name = "ret"
         dummy.ty = f.retTy
         dummy.tag = 0
+        dummy.require = true
         s2g.genWriteVar(dummy, "", false)
     }
 
@@ -489,6 +485,7 @@ func (s2g *sdp2Go) genInterfaceFunc(itf *interfaceInfo, f *funcInfo) {
         dummy.name = name
         dummy.ty = arg.ty
         dummy.tag = uint32(i+1)
+        dummy.require = true
         s2g.genWriteVar(dummy, "", false)
     }
 
@@ -542,12 +539,13 @@ func (s2g *sdp2Go) genInterfaceProxyFunc(itf *interfaceInfo, f *funcInfo) {
             dummy.name = arg.name
             dummy.ty = arg.ty
             dummy.tag = uint32(i+1)
+            dummy.require = true
             s2g.genWriteVar(dummy, "", f.hasRet)
         }
     }
 
     s2g.Write("var rsp protocol.ResponsePacket")
-    s2g.Write(`err = s.proxy.Invoke("` + f.name + `", p.ToBytes(), &rsp)`)
+    s2g.Write(`err = s.proxy.Invoke("` + f.oldname + `", p.ToBytes(), &rsp)`)
     s2g.Write(genCheckErr(f.hasRet))
 
     if hasOut || f.hasRet {

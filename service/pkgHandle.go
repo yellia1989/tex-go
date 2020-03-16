@@ -38,7 +38,7 @@ func (h *texSvrPkgHandle) HandleRecv(ctx context.Context, pkg []byte, overload b
     current := net.ContextGetCurrent(ctx)
     up := codec.NewUnPacker(pkg[4:])
     req := &current.Request
-    if err := req.ReadStruct(up); err != nil {
+    if err := req.ReadStructFromTag(up, 0, true); err != nil {
         log.FErrorf("peer: %s:%d parse RequestPacket err:%s", current.IP, current.Port, err.Error())
         current.Close()
         return
