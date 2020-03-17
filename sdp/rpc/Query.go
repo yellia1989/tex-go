@@ -1,12 +1,12 @@
 // 此文件为sdp2go工具自动生成,请不要手动编辑
 
-package mfw
+package rpc
 
 import (
 	"context"
 	"fmt"
-	tex "github.com/yellia1989/tex-go/service"
-	"github.com/yellia1989/tex-go/service/protocol/protocol"
+	"github.com/yellia1989/tex-go/sdp/protocol"
+	"github.com/yellia1989/tex-go/service/model"
 	"github.com/yellia1989/tex-go/tools/log"
 	"github.com/yellia1989/tex-go/tools/net"
 	"github.com/yellia1989/tex-go/tools/sdp/codec"
@@ -14,10 +14,10 @@ import (
 )
 
 type Query struct {
-	proxy tex.ServicePrxImpl
+	proxy model.ServicePrxImpl
 }
 
-func (s *Query) SetPrxImpl(impl tex.ServicePrxImpl) {
+func (s *Query) SetPrxImpl(impl model.ServicePrxImpl) {
 	s.proxy = impl
 }
 func (s *Query) SetTimeout(timeout time.Duration) {

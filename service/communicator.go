@@ -7,11 +7,13 @@ import (
 type Communicator struct {
     mu sync.Mutex
     mPrx map[string]*servicePrxImpl
+    sLocator string
 }
 
-func NewCommunicator() *Communicator {
+func NewCommunicator(locator string) *Communicator {
     comm := &Communicator{}
     comm.mPrx = make(map[string]*servicePrxImpl)
+    comm.sLocator = locator
 
     return comm
 }

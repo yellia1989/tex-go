@@ -6,19 +6,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/yellia1989/tex-go/tools/sdp/codec"
+	"github.com/yellia1989/tex-go/tools/sdp/util"
 	"strconv"
-	"strings"
 )
-
-func tab(buff *bytes.Buffer, tab int, code string) {
-	buff.WriteString(strings.Repeat(" ", tab*4) + code)
-}
-func fieldname(name string) string {
-	if name != "" {
-		return name + ": "
-	}
-	return ""
-}
 
 type NUMBER int32
 
@@ -38,24 +28,24 @@ func (st *Student) ResetDefault() {
 	st.IUid = 1
 }
 func (st *Student) Visit(buff *bytes.Buffer, t int) {
-	tab(buff, t+1, fieldname("iUid")+fmt.Sprintf("%v\n", st.IUid))
-	tab(buff, t+1, fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
-	tab(buff, t+1, fieldname("iAge")+fmt.Sprintf("%v\n", st.IAge))
-	tab(buff, t+1, fieldname("mSecret")+strconv.Itoa(len(st.MSecret)))
+	util.Tab(buff, t+1, util.Fieldname("iUid")+fmt.Sprintf("%v\n", st.IUid))
+	util.Tab(buff, t+1, util.Fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
+	util.Tab(buff, t+1, util.Fieldname("iAge")+fmt.Sprintf("%v\n", st.IAge))
+	util.Tab(buff, t+1, util.Fieldname("mSecret")+strconv.Itoa(len(st.MSecret)))
 	if len(st.MSecret) == 0 {
 		buff.WriteString(", {}\n")
 	} else {
 		buff.WriteString(", {\n")
 	}
 	for k, v := range st.MSecret {
-		tab(buff, t+1+1, "(\n")
+		util.Tab(buff, t+1+1, "(\n")
 
-		tab(buff, t+1+2, fieldname("")+fmt.Sprintf("%v\n", k))
-		tab(buff, t+1+2, fieldname("")+fmt.Sprintf("%v\n", v))
-		tab(buff, t+1+1, ")\n")
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", k))
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", v))
+		util.Tab(buff, t+1+1, ")\n")
 	}
 	if len(st.MSecret) != 0 {
-		tab(buff, t+1, "}\n")
+		util.Tab(buff, t+1, "}\n")
 	}
 }
 func (st *Student) ReadStruct(up *codec.UnPacker) error {
@@ -242,14 +232,14 @@ func (st *Teacher) ResetDefault() {
 	st.S2.ResetDefault()
 }
 func (st *Teacher) Visit(buff *bytes.Buffer, t int) {
-	tab(buff, t+1, fieldname("iId")+fmt.Sprintf("%v\n", st.IId))
-	tab(buff, t+1, fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
-	tab(buff, t+1, fieldname("s1")+"{\n")
+	util.Tab(buff, t+1, util.Fieldname("iId")+fmt.Sprintf("%v\n", st.IId))
+	util.Tab(buff, t+1, util.Fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
+	util.Tab(buff, t+1, util.Fieldname("s1")+"{\n")
 	st.S1.Visit(buff, t+1+1)
-	tab(buff, t+1, "}\n")
-	tab(buff, t+1, fieldname("s2")+"{\n")
+	util.Tab(buff, t+1, "}\n")
+	util.Tab(buff, t+1, util.Fieldname("s2")+"{\n")
 	st.S2.Visit(buff, t+1+1)
-	tab(buff, t+1, "}\n")
+	util.Tab(buff, t+1, "}\n")
 }
 func (st *Teacher) ReadStruct(up *codec.UnPacker) error {
 	var err error
@@ -383,7 +373,7 @@ type Teachers struct {
 func (st *Teachers) ResetDefault() {
 }
 func (st *Teachers) Visit(buff *bytes.Buffer, t int) {
-	tab(buff, t+1, fieldname("vTeacher")+strconv.Itoa(len(st.VTeacher)))
+	util.Tab(buff, t+1, util.Fieldname("vTeacher")+strconv.Itoa(len(st.VTeacher)))
 	if len(st.VTeacher) == 0 {
 		buff.WriteString(", []\n")
 	} else {
@@ -391,12 +381,12 @@ func (st *Teachers) Visit(buff *bytes.Buffer, t int) {
 	}
 	for _, v := range st.VTeacher {
 
-		tab(buff, t+1+1, fieldname("")+"{\n")
+		util.Tab(buff, t+1+1, util.Fieldname("")+"{\n")
 		v.Visit(buff, t+1+1+1)
-		tab(buff, t+1+1, "}\n")
+		util.Tab(buff, t+1+1, "}\n")
 	}
 	if len(st.VTeacher) != 0 {
-		tab(buff, t+1, "]\n")
+		util.Tab(buff, t+1, "]\n")
 	}
 }
 func (st *Teachers) ReadStruct(up *codec.UnPacker) error {
@@ -537,9 +527,9 @@ type Class struct {
 func (st *Class) ResetDefault() {
 }
 func (st *Class) Visit(buff *bytes.Buffer, t int) {
-	tab(buff, t+1, fieldname("iId")+fmt.Sprintf("%v\n", st.IId))
-	tab(buff, t+1, fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
-	tab(buff, t+1, fieldname("vStudent")+strconv.Itoa(len(st.VStudent)))
+	util.Tab(buff, t+1, util.Fieldname("iId")+fmt.Sprintf("%v\n", st.IId))
+	util.Tab(buff, t+1, util.Fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
+	util.Tab(buff, t+1, util.Fieldname("vStudent")+strconv.Itoa(len(st.VStudent)))
 	if len(st.VStudent) == 0 {
 		buff.WriteString(", []\n")
 	} else {
@@ -547,14 +537,14 @@ func (st *Class) Visit(buff *bytes.Buffer, t int) {
 	}
 	for _, v := range st.VStudent {
 
-		tab(buff, t+1+1, fieldname("")+"{\n")
+		util.Tab(buff, t+1+1, util.Fieldname("")+"{\n")
 		v.Visit(buff, t+1+1+1)
-		tab(buff, t+1+1, "}\n")
+		util.Tab(buff, t+1+1, "}\n")
 	}
 	if len(st.VStudent) != 0 {
-		tab(buff, t+1, "]\n")
+		util.Tab(buff, t+1, "]\n")
 	}
-	tab(buff, t+1, fieldname("vData")+strconv.Itoa(len(st.VData)))
+	util.Tab(buff, t+1, util.Fieldname("vData")+strconv.Itoa(len(st.VData)))
 	if len(st.VData) == 0 {
 		buff.WriteString(", []\n")
 	} else {
@@ -562,12 +552,12 @@ func (st *Class) Visit(buff *bytes.Buffer, t int) {
 	}
 	for _, v := range st.VData {
 
-		tab(buff, t+1+1, fieldname("")+fmt.Sprintf("%v\n", v))
+		util.Tab(buff, t+1+1, util.Fieldname("")+fmt.Sprintf("%v\n", v))
 	}
 	if len(st.VData) != 0 {
-		tab(buff, t+1, "]\n")
+		util.Tab(buff, t+1, "]\n")
 	}
-	tab(buff, t+1, fieldname("vTeacher")+strconv.Itoa(len(st.VTeacher)))
+	util.Tab(buff, t+1, util.Fieldname("vTeacher")+strconv.Itoa(len(st.VTeacher)))
 	if len(st.VTeacher) == 0 {
 		buff.WriteString(", []\n")
 	} else {
@@ -575,12 +565,12 @@ func (st *Class) Visit(buff *bytes.Buffer, t int) {
 	}
 	for _, v := range st.VTeacher {
 
-		tab(buff, t+1+1, fieldname("")+"{\n")
+		util.Tab(buff, t+1+1, util.Fieldname("")+"{\n")
 		v.Visit(buff, t+1+1+1)
-		tab(buff, t+1+1, "}\n")
+		util.Tab(buff, t+1+1, "}\n")
 	}
 	if len(st.VTeacher) != 0 {
-		tab(buff, t+1, "]\n")
+		util.Tab(buff, t+1, "]\n")
 	}
 }
 func (st *Class) ReadStruct(up *codec.UnPacker) error {
@@ -789,23 +779,23 @@ type School struct {
 func (st *School) ResetDefault() {
 }
 func (st *School) Visit(buff *bytes.Buffer, t int) {
-	tab(buff, t+1, fieldname("mClass")+strconv.Itoa(len(st.MClass)))
+	util.Tab(buff, t+1, util.Fieldname("mClass")+strconv.Itoa(len(st.MClass)))
 	if len(st.MClass) == 0 {
 		buff.WriteString(", {}\n")
 	} else {
 		buff.WriteString(", {\n")
 	}
 	for k, v := range st.MClass {
-		tab(buff, t+1+1, "(\n")
+		util.Tab(buff, t+1+1, "(\n")
 
-		tab(buff, t+1+2, fieldname("")+fmt.Sprintf("%v\n", k))
-		tab(buff, t+1+2, fieldname("")+"{\n")
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", k))
+		util.Tab(buff, t+1+2, util.Fieldname("")+"{\n")
 		v.Visit(buff, t+1+2+1)
-		tab(buff, t+1+2, "}\n")
-		tab(buff, t+1+1, ")\n")
+		util.Tab(buff, t+1+2, "}\n")
+		util.Tab(buff, t+1+1, ")\n")
 	}
 	if len(st.MClass) != 0 {
-		tab(buff, t+1, "}\n")
+		util.Tab(buff, t+1, "}\n")
 	}
 }
 func (st *School) ReadStruct(up *codec.UnPacker) error {

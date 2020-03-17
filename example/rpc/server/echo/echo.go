@@ -4,8 +4,8 @@ package echo
 
 import (
 	"context"
-	tex "github.com/yellia1989/tex-go/service"
-	"github.com/yellia1989/tex-go/service/protocol/protocol"
+	"github.com/yellia1989/tex-go/sdp/protocol"
+	"github.com/yellia1989/tex-go/service/model"
 	"github.com/yellia1989/tex-go/tools/log"
 	"github.com/yellia1989/tex-go/tools/net"
 	"github.com/yellia1989/tex-go/tools/sdp/codec"
@@ -13,10 +13,10 @@ import (
 )
 
 type EchoService struct {
-	proxy tex.ServicePrxImpl
+	proxy model.ServicePrxImpl
 }
 
-func (s *EchoService) SetPrxImpl(impl tex.ServicePrxImpl) {
+func (s *EchoService) SetPrxImpl(impl model.ServicePrxImpl) {
 	s.proxy = impl
 }
 func (s *EchoService) SetTimeout(timeout time.Duration) {

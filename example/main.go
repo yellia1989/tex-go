@@ -2,7 +2,7 @@ package main
 
 import (
     tex "github.com/yellia1989/tex-go/service"
-    "github.com/yellia1989/tex-go/service/protocol/mfw"
+    "github.com/yellia1989/tex-go/sdp/rpc"
     "github.com/yellia1989/tex-go/tools/log"
 )
 
@@ -10,9 +10,9 @@ func main() {
     log.SetFrameworkLevel(log.DEBUG)
     log.SetLevel(log.DEBUG)
 
-    comm := tex.NewCommunicator()
+    comm := tex.NewCommunicator("")
 
-    query := new(mfw.Query)
+    query := new(rpc.Query)
     comm.StringToProxy("tex.mfwregistry.QueryObj@tcp -h 192.168.0.16 -p 2000 -t 3600000", query)
 
     var vActiveEps []string

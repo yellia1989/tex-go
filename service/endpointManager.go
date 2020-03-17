@@ -14,6 +14,7 @@ import (
     "sync/atomic"
     "math/rand"
     "github.com/yellia1989/tex-go/tools/log"
+    "github.com/yellia1989/tex-go/sdp/rpc"
 )
 
 type endpointManager struct {
@@ -21,6 +22,7 @@ type endpointManager struct {
     comm *Communicator
     refreshInterval time.Duration
     direct bool
+    query *rpc.Query
 
     mu sync.Mutex
     ready bool
@@ -60,6 +62,8 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager, error) {
         }
     } else {
         epmgr.sObjName = objName
+        epmgr.query = new(rpc.Query)
+        comm.StringToProxy(comm.sLocator, epmgr.query)
         epmgr.refreshEndpoint()
         // 定时更新endpoint列表
         // go epmgr.refreshEndpoint()

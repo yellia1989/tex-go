@@ -19,10 +19,6 @@ var (
     comm *Communicator
 )
 
-func init() {
-    comm = NewCommunicator()
-}
-
 func Run(svr app) {
     defer func() {
         log.FlushLogger()
@@ -85,7 +81,8 @@ func StringToProxy(name string, proxy ServicePrx) error {
 }
 
 func initClient() error {
-    // TODO
+    comm = NewCommunicator(cliCfg.locator)
+
     return nil
 }
 

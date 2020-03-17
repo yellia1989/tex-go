@@ -81,17 +81,6 @@ func (s2g *sdp2Go) generate() {
         s2g.Write(")")
     }
 
-    // 生成visit帮助函数
-    s2g.Write(`func tab(buff *bytes.Buffer, tab int, code string) {
-      buff.WriteString(strings.Repeat(" ", tab*4) + code)
-    }
-    func fieldname(name string) string {
-        if name != "" {
-            return name + ": "
-        }
-        return ""
-    }`)
-
     // 生成枚举
     for _, v := range s2g.p.enums {
         s2g.genEnum(&v)
@@ -222,14 +211,14 @@ func (s2g *sdp2Go) genType(ty *varType) string {
 func (s2g *sdp2Go) genStructMemberVisit(prefix string, m *structMember, tab string) {
     switch m.ty.ty {
      case tkTMap:
-        s2g.Write(`tab(buff, `+tab+`, fieldname("`+ m.oldname +`") + strconv.Itoa(len(`+ prefix + m.name +`)))
+        s2g.Write(`util.Tab(buff, `+tab+`, util.Fieldname("`+ m.oldname +`") + strconv.Itoa(len(`+ prefix + m.name +`)))
 if len(`+prefix+m.name+`) == 0 {
     buff.WriteString(", {}\n")
 } else {
     buff.WriteString(", {\n")
 }
 for k,v := range `+prefix+m.name+` {
-    tab(buff, `+tab+`+1, "(\n")
+    util.Tab(buff, `+tab+`+1, "(\n")
 `)
     km := &structMember{} 
     km.ty = m.ty.typeK
@@ -241,13 +230,13 @@ for k,v := range `+prefix+m.name+` {
     vm.name = "v"
     s2g.genStructMemberVisit("", vm, tab+"+2")
 
-    s2g.Write(`tab(buff, `+tab+`+1, ")\n")
+    s2g.Write(`util.Tab(buff, `+tab+`+1, ")\n")
 }
 if len(`+prefix+m.name+`) != 0 {
-    tab(buff, `+tab+`, "}\n")
+    util.Tab(buff, `+tab+`, "}\n")
 }`)
     case tkTVector:
- s2g.Write(`tab(buff, `+tab+`, fieldname("`+ m.oldname +`") + strconv.Itoa(len(`+ prefix + m.name +`)))
+ s2g.Write(`util.Tab(buff, `+tab+`, util.Fieldname("`+ m.oldname +`") + strconv.Itoa(len(`+ prefix + m.name +`)))
 if len(`+prefix+m.name+`) == 0 {
     buff.WriteString(", []\n")
 } else {
@@ -262,18 +251,18 @@ for _,v := range `+prefix+m.name+` {
 
     s2g.Write(`}
 if len(`+prefix+m.name+`) != 0 {
-    tab(buff, `+tab+`, "]\n")
+    util.Tab(buff, `+tab+`, "]\n")
 }`)
     case tkName:
         if m.ty.ty == tkName && m.ty.customTy == tkEnum {
-            s2g.Write(`tab(buff, `+tab+`, fieldname("` + m.oldname + `") + fmt.Sprintf("%v\n", `+ prefix+m.name +`))`)
+            s2g.Write(`util.Tab(buff, `+tab+`, util.Fieldname("` + m.oldname + `") + fmt.Sprintf("%v\n", `+ prefix+m.name +`))`)
         } else {
-            s2g.Write(`tab(buff, `+tab+`, fieldname("` + m.oldname + `") + "{\n")`)
+            s2g.Write(`util.Tab(buff, `+tab+`, util.Fieldname("` + m.oldname + `") + "{\n")`)
             s2g.Write(prefix+m.name + `.Visit(buff, `+tab+`+1)`)
-            s2g.Write(`tab(buff, `+tab+`, "}\n")`)
+            s2g.Write(`util.Tab(buff, `+tab+`, "}\n")`)
         }
     default:
-        s2g.Write(`tab(buff, `+tab+`, fieldname("` + m.oldname + `") + fmt.Sprintf("%v\n", `+ prefix+m.name +`))`)
+        s2g.Write(`util.Tab(buff, `+tab+`, util.Fieldname("` + m.oldname + `") + fmt.Sprintf("%v\n", `+ prefix+m.name +`))`)
     }
 }
 
@@ -416,9 +405,9 @@ func (s2g *sdp2Go) genInterface(v *interfaceInfo) {
 
     s2g.Write(`
 type ` + v.name + ` struct {
-    proxy tex.ServicePrxImpl
+    proxy model.ServicePrxImpl
 }
-func (s *` + v.name + `) SetPrxImpl(impl tex.ServicePrxImpl) {
+func (s *` + v.name + `) SetPrxImpl(impl model.ServicePrxImpl) {
     s.proxy = impl
 }
 func (s *` + v.name + `) SetTimeout(timeout time.Duration) {

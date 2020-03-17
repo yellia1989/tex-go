@@ -1,4 +1,4 @@
-module mfw
+module rpc
 {
     interface Query
     {

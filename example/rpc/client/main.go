@@ -41,7 +41,7 @@ func main() {
         done.Add(1)
         go func(id int) {
             log.Debugf("client:%d start", id)
-            comm := tex.NewCommunicator()
+            comm := tex.NewCommunicator("")
             defer func() {
                 comm.Close()
             }()

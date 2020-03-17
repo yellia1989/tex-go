@@ -3,8 +3,11 @@
 package protocol
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/yellia1989/tex-go/tools/sdp/codec"
+	"github.com/yellia1989/tex-go/tools/sdp/util"
+	"strconv"
 )
 
 type RequestPacket struct {
@@ -18,6 +21,30 @@ type RequestPacket struct {
 }
 
 func (st *RequestPacket) ResetDefault() {
+}
+func (st *RequestPacket) Visit(buff *bytes.Buffer, t int) {
+	util.Tab(buff, t+1, util.Fieldname("bIsOneWay")+fmt.Sprintf("%v\n", st.BIsOneWay))
+	util.Tab(buff, t+1, util.Fieldname("iRequestId")+fmt.Sprintf("%v\n", st.IRequestId))
+	util.Tab(buff, t+1, util.Fieldname("sServiceName")+fmt.Sprintf("%v\n", st.SServiceName))
+	util.Tab(buff, t+1, util.Fieldname("sFuncName")+fmt.Sprintf("%v\n", st.SFuncName))
+	util.Tab(buff, t+1, util.Fieldname("sReqPayload")+fmt.Sprintf("%v\n", st.SReqPayload))
+	util.Tab(buff, t+1, util.Fieldname("iTimeout")+fmt.Sprintf("%v\n", st.ITimeout))
+	util.Tab(buff, t+1, util.Fieldname("context")+strconv.Itoa(len(st.Context)))
+	if len(st.Context) == 0 {
+		buff.WriteString(", {}\n")
+	} else {
+		buff.WriteString(", {\n")
+	}
+	for k, v := range st.Context {
+		util.Tab(buff, t+1+1, "(\n")
+
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", k))
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", v))
+		util.Tab(buff, t+1+1, ")\n")
+	}
+	if len(st.Context) != 0 {
+		util.Tab(buff, t+1, "}\n")
+	}
 }
 func (st *RequestPacket) ReadStruct(up *codec.UnPacker) error {
 	var err error
@@ -229,6 +256,27 @@ type ResponsePacket struct {
 }
 
 func (st *ResponsePacket) ResetDefault() {
+}
+func (st *ResponsePacket) Visit(buff *bytes.Buffer, t int) {
+	util.Tab(buff, t+1, util.Fieldname("iRet")+fmt.Sprintf("%v\n", st.IRet))
+	util.Tab(buff, t+1, util.Fieldname("iRequestId")+fmt.Sprintf("%v\n", st.IRequestId))
+	util.Tab(buff, t+1, util.Fieldname("sRspPayload")+fmt.Sprintf("%v\n", st.SRspPayload))
+	util.Tab(buff, t+1, util.Fieldname("context")+strconv.Itoa(len(st.Context)))
+	if len(st.Context) == 0 {
+		buff.WriteString(", {}\n")
+	} else {
+		buff.WriteString(", {\n")
+	}
+	for k, v := range st.Context {
+		util.Tab(buff, t+1+1, "(\n")
+
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", k))
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", v))
+		util.Tab(buff, t+1+1, ")\n")
+	}
+	if len(st.Context) != 0 {
+		util.Tab(buff, t+1, "}\n")
+	}
 }
 func (st *ResponsePacket) ReadStruct(up *codec.UnPacker) error {
 	var err error
