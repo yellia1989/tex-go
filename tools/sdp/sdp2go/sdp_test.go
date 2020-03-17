@@ -89,6 +89,39 @@ func TestDefaultStruct(t *testing.T) {
     }
 }
 
+func TestPrintSdp(t *testing.T) {
+    s := Test2.Student{}
+    s.ResetDefault()
+    s.IUid = 1234567890;
+    s.SName = "学生1";
+    s.IAge = 12;
+    s.MSecret = make(map[string]string)
+    s.MSecret["yellia"] = "hello"
+    s.MSecret["luo"] = "juan"
+
+    cl := Test2.Class{}
+    cl.ResetDefault()
+    cl.IId = 1001
+    cl.SName = "c1"
+    cl.VStudent = append(cl.VStudent, s)
+    cl.VStudent = append(cl.VStudent, s)
+    cl.VData = append(cl.VData, 'c')
+
+    tc := Test2.Teacher{}
+    tc.ResetDefault()
+    tc.IId = 1001
+    tc.S1 = s
+    cl.VTeacher = append(cl.VTeacher, tc)
+
+    sc := Test2.School{}
+    sc.ResetDefault()
+    sc.MClass = make(map[uint32]Test2.Class)
+    sc.MClass[1001] = cl
+    sc.MClass[1002] = cl
+
+    t.Log("\n"+codec.PrintSdp(&sc))
+}
+
 func TestC(t *testing.T) {
     packer := codec.NewPacker()
 

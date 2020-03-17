@@ -32,4 +32,8 @@ struct Class {
     4   require vector<Teacher> vTeacher;
 };
 
+struct School {
+    0   optional map<unsigned int, Class> mClass;
+};
+
 };

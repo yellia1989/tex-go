@@ -81,6 +81,17 @@ func (s2g *sdp2Go) generate() {
         s2g.Write(")")
     }
 
+    // 生成visit帮助函数
+    s2g.Write(`func tab(buff *bytes.Buffer, tab int, code string) {
+      buff.WriteString(strings.Repeat(" ", tab*4) + code)
+    }
+    func fieldname(name string) string {
+        if name != "" {
+            return name + ": "
+        }
+        return ""
+    }`)
+
     // 生成枚举
     for _, v := range s2g.p.enums {
         s2g.genEnum(&v)
@@ -208,6 +219,72 @@ func (s2g *sdp2Go) genType(ty *varType) string {
     return ret
 }
 
+func (s2g *sdp2Go) genStructMemberVisit(prefix string, m *structMember, tab string) {
+    switch m.ty.ty {
+     case tkTMap:
+        s2g.Write(`tab(buff, `+tab+`, fieldname("`+ m.oldname +`") + strconv.Itoa(len(`+ prefix + m.name +`)))
+if len(`+prefix+m.name+`) == 0 {
+    buff.WriteString(", {}\n")
+} else {
+    buff.WriteString(", {\n")
+}
+for k,v := range `+prefix+m.name+` {
+    tab(buff, `+tab+`+1, "(\n")
+`)
+    km := &structMember{} 
+    km.ty = m.ty.typeK
+    km.name = "k"
+    s2g.genStructMemberVisit("", km, tab+"+2")
+
+    vm := &structMember{} 
+    vm.ty = m.ty.typeV
+    vm.name = "v"
+    s2g.genStructMemberVisit("", vm, tab+"+2")
+
+    s2g.Write(`tab(buff, `+tab+`+1, ")\n")
+}
+if len(`+prefix+m.name+`) != 0 {
+    tab(buff, `+tab+`, "}\n")
+}`)
+    case tkTVector:
+ s2g.Write(`tab(buff, `+tab+`, fieldname("`+ m.oldname +`") + strconv.Itoa(len(`+ prefix + m.name +`)))
+if len(`+prefix+m.name+`) == 0 {
+    buff.WriteString(", []\n")
+} else {
+    buff.WriteString(", [\n")
+}
+for _,v := range `+prefix+m.name+` {
+`)
+    dummy := &structMember{}
+    dummy.ty = m.ty.typeK
+    dummy.name = "v"
+    s2g.genStructMemberVisit("", dummy, tab+"+1")
+
+    s2g.Write(`}
+if len(`+prefix+m.name+`) != 0 {
+    tab(buff, `+tab+`, "]\n")
+}`)
+    case tkName:
+        if m.ty.ty == tkName && m.ty.customTy == tkEnum {
+            s2g.Write(`tab(buff, `+tab+`, fieldname("` + m.oldname + `") + fmt.Sprintf("%v\n", `+ prefix+m.name +`))`)
+        } else {
+            s2g.Write(`tab(buff, `+tab+`, fieldname("` + m.oldname + `") + "{\n")`)
+            s2g.Write(prefix+m.name + `.Visit(buff, `+tab+`+1)`)
+            s2g.Write(`tab(buff, `+tab+`, "}\n")`)
+        }
+    default:
+        s2g.Write(`tab(buff, `+tab+`, fieldname("` + m.oldname + `") + fmt.Sprintf("%v\n", `+ prefix+m.name +`))`)
+    }
+}
+
+func (s2g *sdp2Go) genStructVisit(st *structInfo) {
+    s2g.Write("func (st *" + st.name + ") Visit(buff *bytes.Buffer, t int) {")
+    for _, v := range st.members {
+        s2g.genStructMemberVisit("st.", &v, "t+1")
+    }
+    s2g.Write("}")
+}
+
 func (s2g *sdp2Go) genStruct(st *structInfo) {
     st.rename()
 
@@ -231,6 +308,9 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
         s2g.Write("st." + v.name + " = " + v.defVal)
     }
     s2g.Write("}")
+
+    // Visit
+    s2g.genStructVisit(st)
 
     // 读函数
     s2g.Write(`func (st *` + st.name + `) ReadStruct(up *codec.UnPacker) error {

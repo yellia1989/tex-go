@@ -542,7 +542,7 @@ func NewUnPacker(buf []byte) *UnPacker {
 type SdpStructITF interface {
     ReadStructFromTag(up *UnPacker, tag uint32, require bool) error
     WriteStructFromTag(p *Packer, tag uint32, require bool) error
-    //Visit(out *bytes.Buffer) error
+    Visit(out *bytes.Buffer, tab int)
 }
 func StringToSdp(buf []byte, st SdpStructITF) {
     up := NewUnPacker(buf)
@@ -559,6 +559,8 @@ func SdpToString(st SdpStructITF) []byte {
     }
     return p.ToBytes()
 }
-func PrintSdp(st SdpStructITF) []byte {
-    return nil
+func PrintSdp(st SdpStructITF) string {
+    buff := bytes.Buffer{}
+    st.Visit(&buff, 0)
+    return buff.String()
 }

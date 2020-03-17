@@ -3,9 +3,22 @@
 package Test2
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/yellia1989/tex-go/tools/sdp/codec"
+	"strconv"
+	"strings"
 )
+
+func tab(buff *bytes.Buffer, tab int, code string) {
+	buff.WriteString(strings.Repeat(" ", tab*4) + code)
+}
+func fieldname(name string) string {
+	if name != "" {
+		return name + ": "
+	}
+	return ""
+}
 
 type NUMBER int32
 
@@ -23,6 +36,27 @@ type Student struct {
 
 func (st *Student) ResetDefault() {
 	st.IUid = 1
+}
+func (st *Student) Visit(buff *bytes.Buffer, t int) {
+	tab(buff, t+1, fieldname("iUid")+fmt.Sprintf("%v\n", st.IUid))
+	tab(buff, t+1, fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
+	tab(buff, t+1, fieldname("iAge")+fmt.Sprintf("%v\n", st.IAge))
+	tab(buff, t+1, fieldname("mSecret")+strconv.Itoa(len(st.MSecret)))
+	if len(st.MSecret) == 0 {
+		buff.WriteString(", {}\n")
+	} else {
+		buff.WriteString(", {\n")
+	}
+	for k, v := range st.MSecret {
+		tab(buff, t+1+1, "(\n")
+
+		tab(buff, t+1+2, fieldname("")+fmt.Sprintf("%v\n", k))
+		tab(buff, t+1+2, fieldname("")+fmt.Sprintf("%v\n", v))
+		tab(buff, t+1+1, ")\n")
+	}
+	if len(st.MSecret) != 0 {
+		tab(buff, t+1, "}\n")
+	}
 }
 func (st *Student) ReadStruct(up *codec.UnPacker) error {
 	var err error
@@ -207,6 +241,16 @@ func (st *Teacher) ResetDefault() {
 	st.S1.ResetDefault()
 	st.S2.ResetDefault()
 }
+func (st *Teacher) Visit(buff *bytes.Buffer, t int) {
+	tab(buff, t+1, fieldname("iId")+fmt.Sprintf("%v\n", st.IId))
+	tab(buff, t+1, fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
+	tab(buff, t+1, fieldname("s1")+"{\n")
+	st.S1.Visit(buff, t+1+1)
+	tab(buff, t+1, "}\n")
+	tab(buff, t+1, fieldname("s2")+"{\n")
+	st.S2.Visit(buff, t+1+1)
+	tab(buff, t+1, "}\n")
+}
 func (st *Teacher) ReadStruct(up *codec.UnPacker) error {
 	var err error
 	var length uint32
@@ -337,6 +381,23 @@ type Teachers struct {
 }
 
 func (st *Teachers) ResetDefault() {
+}
+func (st *Teachers) Visit(buff *bytes.Buffer, t int) {
+	tab(buff, t+1, fieldname("vTeacher")+strconv.Itoa(len(st.VTeacher)))
+	if len(st.VTeacher) == 0 {
+		buff.WriteString(", []\n")
+	} else {
+		buff.WriteString(", [\n")
+	}
+	for _, v := range st.VTeacher {
+
+		tab(buff, t+1+1, fieldname("")+"{\n")
+		v.Visit(buff, t+1+1+1)
+		tab(buff, t+1+1, "}\n")
+	}
+	if len(st.VTeacher) != 0 {
+		tab(buff, t+1, "]\n")
+	}
 }
 func (st *Teachers) ReadStruct(up *codec.UnPacker) error {
 	var err error
@@ -474,6 +535,53 @@ type Class struct {
 }
 
 func (st *Class) ResetDefault() {
+}
+func (st *Class) Visit(buff *bytes.Buffer, t int) {
+	tab(buff, t+1, fieldname("iId")+fmt.Sprintf("%v\n", st.IId))
+	tab(buff, t+1, fieldname("sName")+fmt.Sprintf("%v\n", st.SName))
+	tab(buff, t+1, fieldname("vStudent")+strconv.Itoa(len(st.VStudent)))
+	if len(st.VStudent) == 0 {
+		buff.WriteString(", []\n")
+	} else {
+		buff.WriteString(", [\n")
+	}
+	for _, v := range st.VStudent {
+
+		tab(buff, t+1+1, fieldname("")+"{\n")
+		v.Visit(buff, t+1+1+1)
+		tab(buff, t+1+1, "}\n")
+	}
+	if len(st.VStudent) != 0 {
+		tab(buff, t+1, "]\n")
+	}
+	tab(buff, t+1, fieldname("vData")+strconv.Itoa(len(st.VData)))
+	if len(st.VData) == 0 {
+		buff.WriteString(", []\n")
+	} else {
+		buff.WriteString(", [\n")
+	}
+	for _, v := range st.VData {
+
+		tab(buff, t+1+1, fieldname("")+fmt.Sprintf("%v\n", v))
+	}
+	if len(st.VData) != 0 {
+		tab(buff, t+1, "]\n")
+	}
+	tab(buff, t+1, fieldname("vTeacher")+strconv.Itoa(len(st.VTeacher)))
+	if len(st.VTeacher) == 0 {
+		buff.WriteString(", []\n")
+	} else {
+		buff.WriteString(", [\n")
+	}
+	for _, v := range st.VTeacher {
+
+		tab(buff, t+1+1, fieldname("")+"{\n")
+		v.Visit(buff, t+1+1+1)
+		tab(buff, t+1+1, "}\n")
+	}
+	if len(st.VTeacher) != 0 {
+		tab(buff, t+1, "]\n")
+	}
 }
 func (st *Class) ReadStruct(up *codec.UnPacker) error {
 	var err error
@@ -634,6 +742,172 @@ func (st *Class) WriteStruct(p *codec.Packer) error {
 	return err
 }
 func (st *Class) WriteStructFromTag(p *codec.Packer, tag uint32, require bool) error {
+	var err error
+
+	if require {
+		err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+		if err != nil {
+			return err
+		}
+		err = st.WriteStruct(p)
+		if err != nil {
+			return err
+		}
+		err = p.WriteHeader(0, codec.SdpType_StructEnd)
+		if err != nil {
+			return err
+		}
+	} else {
+		p2 := codec.NewPacker()
+		err = st.WriteStruct(p2)
+		if err != nil {
+			return err
+		}
+		if p2.Len() != 0 {
+			err = p.WriteHeader(tag, codec.SdpType_StructBegin)
+			if err != nil {
+				return err
+			}
+			err = p.WriteData(p2.ToBytes())
+			if err != nil {
+				return err
+			}
+			err = p.WriteHeader(0, codec.SdpType_StructEnd)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+type School struct {
+	MClass map[uint32]Class `json:"mClass"`
+}
+
+func (st *School) ResetDefault() {
+}
+func (st *School) Visit(buff *bytes.Buffer, t int) {
+	tab(buff, t+1, fieldname("mClass")+strconv.Itoa(len(st.MClass)))
+	if len(st.MClass) == 0 {
+		buff.WriteString(", {}\n")
+	} else {
+		buff.WriteString(", {\n")
+	}
+	for k, v := range st.MClass {
+		tab(buff, t+1+1, "(\n")
+
+		tab(buff, t+1+2, fieldname("")+fmt.Sprintf("%v\n", k))
+		tab(buff, t+1+2, fieldname("")+"{\n")
+		v.Visit(buff, t+1+2+1)
+		tab(buff, t+1+2, "}\n")
+		tab(buff, t+1+1, ")\n")
+	}
+	if len(st.MClass) != 0 {
+		tab(buff, t+1, "}\n")
+	}
+}
+func (st *School) ReadStruct(up *codec.UnPacker) error {
+	var err error
+	var length uint32
+	var has bool
+	var ty uint32
+	st.ResetDefault()
+
+	has, ty, err = up.SkipToTag(0, false)
+	if !has || err != nil {
+		return err
+	}
+	if ty != codec.SdpType_Map {
+		return fmt.Errorf("tag:%d got wrong type %d", 0, ty)
+	}
+
+	_, length, err = up.ReadNumber32()
+	if err != nil {
+		return err
+	}
+	st.MClass = make(map[uint32]Class)
+	for i := uint32(0); i < length; i++ {
+		var k uint32
+		err = up.ReadUint32(&k, 0, true)
+		if err != nil {
+			return err
+		}
+		var v Class
+		err = v.ReadStructFromTag(up, 0, true)
+		if err != nil {
+			return err
+		}
+		st.MClass[k] = v
+	}
+
+	_ = length
+	_ = has
+	_ = ty
+
+	return err
+}
+func (st *School) ReadStructFromTag(up *codec.UnPacker, tag uint32, require bool) error {
+	var err error
+	var has bool
+	var ty uint32
+	st.ResetDefault()
+
+	has, ty, err = up.SkipToTag(tag, require)
+	if !has || err != nil {
+		return err
+	}
+
+	if ty != codec.SdpType_StructBegin {
+		return fmt.Errorf("tag:%d got wrong type %d", tag, ty)
+	}
+
+	err = st.ReadStruct(up)
+	if err != nil {
+		return err
+	}
+	err = up.SkipStruct()
+	if err != nil {
+		return err
+	}
+
+	_ = has
+	_ = ty
+	return nil
+}
+func (st *School) WriteStruct(p *codec.Packer) error {
+	var err error
+	var length int
+
+	length = len(st.MClass)
+	if false || length != 0 {
+		err = p.WriteHeader(0, codec.SdpType_Map)
+		if err != nil {
+			return err
+		}
+		err = p.WriteNumber32(uint32(length))
+		if err != nil {
+			return err
+		}
+		for _k, _v := range st.MClass {
+			if true || _k != 0 {
+				err = p.WriteUint32(0, _k)
+				if err != nil {
+					return err
+				}
+			}
+			err = _v.WriteStructFromTag(p, 0, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	_ = length
+	return err
+}
+func (st *School) WriteStructFromTag(p *codec.Packer, tag uint32, require bool) error {
 	var err error
 
 	if require {
