@@ -10,6 +10,7 @@ import (
 	"time"
     "sync"
     "sync/atomic"
+    "github.com/yellia1989/tex-go/tools/util"
 )
 
 //DEBUG loglevel
@@ -281,7 +282,7 @@ func (l *Logger) writef(framework bool, level LogLevel, format string, v []inter
 			} else {
 				file = filepath.Base(file)
 			}
-			fmt.Fprintf(buf, "%s:%d|", file, line)
+			fmt.Fprintf(buf, "%s:%d|g%d|", file, line, util.CurGoroutineID())
 		}
 
         if framework {

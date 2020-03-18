@@ -23,12 +23,6 @@ func main() {
 
     comm := tex.NewCommunicator("tex.mfwregistry.QueryObj@tcp -h 192.168.0.16 -p 2000 -t 3600000")
 
-    query := new(rpc.Query)
-    if err := comm.StringToProxy("tex.mfwregistry.QueryObj", query); err != nil {
-        log.Errorf("failed to alloc proxy, err:%s", err.Error())
-        return
-    }
-
     var vActiveEps []string
     var vInactiveEps []string
 
@@ -40,6 +34,11 @@ func main() {
             loop.Stop()
             break exit 
         case <-loop.C:
+            query := new(rpc.Query)
+            if err := comm.StringToProxy("tex.mfwregistry.QueryObj", query); err != nil {
+                log.Errorf("failed to alloc proxy, err:%s", err.Error())
+                return
+            }
             ret, err := query.GetEndpoints("aqua.GameServer.GameServiceObj", "aqua.zone.2", &vActiveEps, &vInactiveEps)
             if err != nil {
                 log.Debugf("query err:%s", err.Error())

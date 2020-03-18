@@ -37,9 +37,13 @@ func (comm *Communicator) StringToProxy(name string, prx ServicePrx) error {
         return err
     }
     comm.mu.Lock()
+    if impl, ok := comm.mPrx[name]; ok {
+        comm.mu.Unlock()
+        prx.SetPrxImpl(impl)
+        return nil
+    }
     comm.mPrx[name] = impl
     comm.mu.Unlock()
-    impl.SetTimeout(cliCfg.invokeTimeout)
     prx.SetPrxImpl(impl)
     return nil
 }
