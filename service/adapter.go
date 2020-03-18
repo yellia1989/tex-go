@@ -1,10 +1,3 @@
-/*
-* adapter的作用就是负责发送和接受请求
-* req sync.Map保存的是protocol.RequestPacket的消息
-* 每个消息发送后会开启定时器计时，时间到还没返回的消息则设置
-* protocol.ResponsePacket的ret为超时
-*/
-
 package tex
 
 import (
@@ -23,7 +16,7 @@ import (
 )
 
 const (
-    adapterActiveInterval = 5 * time.Second // 每10秒检查一下活跃连接
+    adapterActiveInterval = 10 * time.Second // 每10秒检查一下活跃连接
     adapterConsfail = 5 // 最大持续接受消息失败次数
     adapterMinfail = 2 // 最小接受小时失败次数
     adapterFailpation = 50/100 // 消息接受失败率
@@ -180,7 +173,6 @@ func (adapter *adapterProxy) checkActive() {
     for {
         select {
         case <-adapter.done:
-            adapter.done <- true
             break
         case <-loop.C:
             // 持续失败达到一定次数后强制关闭连接

@@ -2,6 +2,7 @@ package tex
 
 import (
     "sync"
+    "fmt"
 )
 
 type Communicator struct {
@@ -19,6 +20,9 @@ func NewCommunicator(locator string) *Communicator {
 }
 
 func (comm *Communicator) StringToProxy(name string, prx ServicePrx) error {
+    if name == "" {
+        return fmt.Errorf("service obj name required")
+    }
     comm.mu.Lock()
 
     if impl, ok := comm.mPrx[name]; ok {

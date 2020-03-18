@@ -10,10 +10,17 @@ func main() {
     log.SetFrameworkLevel(log.DEBUG)
     log.SetLevel(log.DEBUG)
 
-    comm := tex.NewCommunicator("")
+    defer func() {
+        log.FlushLogger()
+    }()
+
+    comm := tex.NewCommunicator("tex.mfwregistry.QueryObj@tcp -h 192.168.0.16 -p 2000 -t 3600000")
 
     query := new(rpc.Query)
-    comm.StringToProxy("tex.mfwregistry.QueryObj@tcp -h 192.168.0.16 -p 2000 -t 3600000", query)
+    if err := comm.StringToProxy("tex.mfwregistry.QueryObj", query); err != nil {
+        log.Errorf("failed to alloc proxy, err:%s", err.Error())
+        return
+    }
 
     var vActiveEps []string
     var vInactiveEps []string
@@ -25,6 +32,4 @@ func main() {
     } else {
         log.Debugf("query success active:%v, inactive:%v", vActiveEps, vInactiveEps)
     }
-
-    log.FlushLogger()
 }
