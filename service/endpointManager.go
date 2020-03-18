@@ -97,11 +97,13 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager, error) {
 func (epmgr *endpointManager) refreshEndpoint() error {
     var vActiveEps []string
     var vInactiveEps []string
+    log.FDebugf("registry query endpoint start, obj:%s", epmgr.sObjName)
     ret, err := epmgr.query.GetEndpoints(epmgr.sObjName, epmgr.sDivision, &vActiveEps, &vInactiveEps)
     if ret != 0 || err != nil {
         log.FErrorf("registry query endpoint failed, obj:%s, err:%s, ret:%d", epmgr.sObjName, err.Error(), ret)
         return err
     }
+    log.FDebugf("registry query endpoint success, obj:%s", epmgr.sObjName)
 
     // 根据endpoint创建adapter
     vEndpoint := make([]*Endpoint, 0)
