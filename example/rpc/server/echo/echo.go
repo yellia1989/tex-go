@@ -34,7 +34,7 @@ func (s *EchoService) Hello(req string, resp *string) error {
 			return err
 		}
 	}
-	var rsp protocol.ResponsePacket
+	var rsp *protocol.ResponsePacket
 	err = s.proxy.Invoke("hello", p.ToBytes(), &rsp)
 	if err != nil {
 		return err

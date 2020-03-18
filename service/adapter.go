@@ -41,7 +41,7 @@ type adapterProxy struct {
     req sync.Map // 请求队列
 }
 
-func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.ResponsePacket) error {
+func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp **protocol.ResponsePacket) error {
     // 请求队列已经达到最大值,直接报错
     mu := &adapter.mu
     mu.Lock()
@@ -86,7 +86,7 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         atomic.StoreUint32(&adapter.consfailTotal, 0)
         log.FDebugf("got response, ret:%d, cost:%d ms, reqid:%d, adapter:%s", resp2.IRet, time.Since(begintime).Milliseconds(), req.IRequestId, adapter.ep)
         if resp2.IRet == protocol.SDPSERVERSUCCESS {
-            *resp = *resp2
+            *resp = resp2
         } else {
             return fmt.Errorf("remote server err, ret:%d", resp2.IRet)
         }

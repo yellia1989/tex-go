@@ -613,7 +613,7 @@ func (s2g *sdp2Go) genInterfaceProxyFunc(itf *interfaceInfo, f *funcInfo) {
         }
     }
 
-    s2g.Write("var rsp protocol.ResponsePacket")
+    s2g.Write("var rsp *protocol.ResponsePacket")
     s2g.Write(`err = s.proxy.Invoke("` + f.oldname + `", p.ToBytes(), &rsp)`)
     s2g.Write(genCheckErr(f.hasRet))
 

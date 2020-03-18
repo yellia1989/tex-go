@@ -9,6 +9,6 @@ import (
 
 type ServicePrxImpl interface {
     // 只有当error == nil时，resp才有效
-    Invoke(sFuncName string, params []byte, resp *protocol.ResponsePacket) error
+    Invoke(sFuncName string, params []byte, resp **protocol.ResponsePacket) error
     SetTimeout(timeout time.Duration)
 }

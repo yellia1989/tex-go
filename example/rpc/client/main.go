@@ -102,7 +102,11 @@ func (p *Qps) round() {
     p.qpstime = 0
     p.mu.Unlock()
 
-    log.Debugf("QPS:%d,time:%d ms", qps, t.Milliseconds()/int64(qps))
+    if qps == 0 {
+        log.Debugf("QPS:%d,time:%d ms", 0, 0)
+    } else {
+        log.Debugf("QPS:%d,time:%d ms", qps, t.Milliseconds()/int64(qps))
+    }
 }
 
 func (p *Qps) avg() {

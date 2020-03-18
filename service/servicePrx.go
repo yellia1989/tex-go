@@ -22,7 +22,7 @@ type servicePrxImpl struct {
     reqid uint32
 }
 
-func (impl *servicePrxImpl) Invoke(sFuncName string, params []byte, resp *protocol.ResponsePacket) error {
+func (impl *servicePrxImpl) Invoke(sFuncName string, params []byte, resp **protocol.ResponsePacket) error {
     // 构造请求消息
     req := &protocol.RequestPacket{
         IRequestId: atomic.AddUint32(&impl.reqid, 1),

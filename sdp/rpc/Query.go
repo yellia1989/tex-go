@@ -42,7 +42,7 @@ func (s *Query) GetEndpoints(sObj string, sDivision string, vActiveEps *[]string
 			return ret, err
 		}
 	}
-	var rsp protocol.ResponsePacket
+	var rsp *protocol.ResponsePacket
 	err = s.proxy.Invoke("getEndpoints", p.ToBytes(), &rsp)
 	if err != nil {
 		return ret, err
@@ -122,7 +122,7 @@ func (s *Query) AddEndpoint(sObj string, sDivision string, ep string) (int32, er
 			return ret, err
 		}
 	}
-	var rsp protocol.ResponsePacket
+	var rsp *protocol.ResponsePacket
 	err = s.proxy.Invoke("addEndpoint", p.ToBytes(), &rsp)
 	if err != nil {
 		return ret, err
@@ -162,7 +162,7 @@ func (s *Query) RemoveEndpoint(sObj string, sDivision string, ep string) (int32,
 			return ret, err
 		}
 	}
-	var rsp protocol.ResponsePacket
+	var rsp *protocol.ResponsePacket
 	err = s.proxy.Invoke("removeEndpoint", p.ToBytes(), &rsp)
 	if err != nil {
 		return ret, err
