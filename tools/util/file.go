@@ -30,8 +30,14 @@ func LoadFromFile(file string) ([]byte, error) {
     return buffer.Bytes(), nil
 }
 
-func SaveToFile(file string, content []byte) error {
-    f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func SaveToFile(file string, content []byte, append bool) error {
+    mode := os.O_CREATE|os.O_WRONLY
+    if append {
+        mode |= os.O_APPEND
+    } else {
+        mode |= os.O_TRUNC
+    }
+    f, err := os.OpenFile(file, mode, 0644)
     if err != nil {
         return err
     }
