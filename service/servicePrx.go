@@ -4,18 +4,13 @@ import (
     "time"
     "strings"
     "sync/atomic"
-    "github.com/yellia1989/tex-go/service/protocol/protocol"
+    "github.com/yellia1989/tex-go/sdp/protocol"
     "github.com/yellia1989/tex-go/tools/log"
+    "github.com/yellia1989/tex-go/service/model"
 )
 
 type ServicePrx interface {
-    SetPrxImpl(impl ServicePrxImpl)
-}
-
-type ServicePrxImpl interface {
-    // 只有当error == nil时，resp才有效
-    Invoke(sFuncName string, params []byte, resp *protocol.ResponsePacket) error
-    SetTimeout(timeout time.Duration)
+    SetPrxImpl(impl model.ServicePrxImpl)
 }
 
 type servicePrxImpl struct {
@@ -27,7 +22,7 @@ type servicePrxImpl struct {
     reqid uint32
 }
 
-func (impl *servicePrxImpl) Invoke(sFuncName string, params []byte, resp *protocol.ResponsePacket) error {
+func (impl *servicePrxImpl) Invoke(sFuncName string, params []byte, resp **protocol.ResponsePacket) error {
     // 构造请求消息
     req := &protocol.RequestPacket{
         IRequestId: atomic.AddUint32(&impl.reqid, 1),

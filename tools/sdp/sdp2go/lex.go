@@ -99,7 +99,7 @@ var TokenMap = [...]string{
 	tkTInt:    "int",
 	tkTBool:   "bool",
 	tkTShort:  "short",
-	tkTByte:   "byte",
+	tkTByte:   "char",
 	tkTLong:   "long",
 	tkTFloat:  "float",
 	tkTDouble: "double",

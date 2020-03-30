@@ -2,11 +2,6 @@
 
 package protocol
 
-import (
-	_ "fmt"
-	_ "github.com/yellia1989/tex-go/tools/sdp/codec"
-)
-
 type PROTOCOL_RETURN_CODE int32
 
 const (

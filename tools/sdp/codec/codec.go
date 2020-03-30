@@ -25,18 +25,22 @@ type Packer struct {
     buf *bytes.Buffer
 }
 
-func (p *Packer) writeData(buf []byte) error {
+func (p *Packer) WriteData(buf []byte) error {
     _, err := p.buf.Write(buf)
     return err
 }
 
 func (p *Packer) WriteHeader(tag uint32, ty uint32) error {
     if tag < 15 {
-        data := (ty << 4) | tag
-        return p.WriteNumber32(data)
+        b := byte((ty << 4) | tag)
+        data := make([]byte,1)
+        data[0] = b
+        return p.WriteData(data)
     }
-    data := (ty << 4) | 0x0F
-    if err := p.WriteNumber32(data); err != nil {
+    b := byte((ty << 4) | 0x0F)
+    data := make([]byte,1)
+    data[0] = b
+    if err := p.WriteData(data); err != nil {
         return err
     }
     return p.WriteNumber32(tag)
@@ -47,7 +51,7 @@ func (p *Packer) WriteNumber32(v uint32) error {
     var bs []byte
     bs = b[:]
     n := binary.PutUvarint(bs, uint64(v))
-    return p.writeData(bs[0:n])
+    return p.WriteData(bs[0:n])
 }
 
 func (p *Packer) WriteNumber64(v uint64) error {
@@ -55,7 +59,7 @@ func (p *Packer) WriteNumber64(v uint64) error {
     var bs []byte
     bs = b[:]
     n := binary.PutUvarint(bs, v)
-    return p.writeData(bs[0:n])
+    return p.WriteData(bs[0:n])
 }
 
 func (p *Packer) WriteBool(tag uint32, v bool) error {
@@ -155,6 +159,14 @@ func (p *Packer) Grow(n int) {
 
 func (p *Packer) Reset() {
     p.buf.Reset()
+}
+
+func (p *Packer) Len() int {
+    return p.buf.Len()
+}
+
+func (p *Packer) Truncate(n int) {
+    p.buf.Truncate(n)
 }
 
 type UnPacker struct {
@@ -524,4 +536,31 @@ func NewPacker() *Packer {
 
 func NewUnPacker(buf []byte) *UnPacker {
     return &UnPacker{buf: bytes.NewReader(buf)}
+}
+
+// 工具函数方便结构体的解析
+type SdpStructITF interface {
+    ReadStructFromTag(up *UnPacker, tag uint32, require bool) error
+    WriteStructFromTag(p *Packer, tag uint32, require bool) error
+    Visit(out *bytes.Buffer, tab int)
+}
+func StringToSdp(buf []byte, st SdpStructITF) {
+    up := NewUnPacker(buf)
+    err := st.ReadStructFromTag(up, 0, true)
+    if err != nil {
+        panic("not a sdp struct")
+    }
+}
+func SdpToString(st SdpStructITF) []byte {
+    p := NewPacker()
+    err := st.WriteStructFromTag(p, 0, true)
+    if err != nil {
+        panic("not a sdp struct")
+    }
+    return p.ToBytes()
+}
+func PrintSdp(st SdpStructITF) string {
+    buff := bytes.Buffer{}
+    st.Visit(&buff, 0)
+    return buff.String()
 }

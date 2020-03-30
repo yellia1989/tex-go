@@ -1,34 +1,18 @@
 package main
 
 import (
-    "github.com/yellia1989/tex-go/tools/sdp/sdp2go/test2"
-    "github.com/yellia1989/tex-go/tools/sdp/sdp2go/test"
     "testing"
-    "github.com/yellia1989/tex-go/tools/sdp/codec"
     "reflect"
+    "fmt"
+    "strings"
+    "github.com/yellia1989/tex-go/tools/sdp/codec"
+    "github.com/yellia1989/tex-go/tools/sdp/sdp2go/test"
+    "github.com/yellia1989/tex-go/tools/sdp/sdp2go/Test2"
 )
 
 // 简单测试struct的读写
-/*
-type SimpleStruct struct {
-	B   bool            `json:"b"`
-	By  int8            `json:"by"`
-	S   int16           `json:"s"`
-	Us  uint16          `json:"us"`
-	I   int32           `json:"i"`
-	Ui  uint32          `json:"ui"`
-	L   int64           `json:"l"`
-	Ul  uint64          `json:"ul"`
-	F   float32         `json:"f"`
-	D   float64         `json:"d"`
-	Ss  string          `json:"s"`
-	Vi  []int32         `json:"vi"`
-	Mi  map[int32]int32 `json:"mi"`
-	Age Age             `json:"age"`
-}
-*/
 func TestStructSimple(t *testing.T) {
-    var ss test2.SimpleStruct
+    var ss test.SimpleStruct
 
     ss.B = true
     ss.By = 1
@@ -46,7 +30,6 @@ func TestStructSimple(t *testing.T) {
     ss.Mi = make(map[int32]int32)
     ss.Mi[1] = 1
     ss.Mi[2] = 2
-    ss.Age = test2.Age_10
 
     p := codec.NewPacker()
     if err := ss.WriteStruct(p); err != nil {
@@ -54,7 +37,7 @@ func TestStructSimple(t *testing.T) {
     }
 
     up := codec.NewUnPacker(p.ToBytes())
-    var ss2 test2.SimpleStruct
+    var ss2 test.SimpleStruct
     ss2.ReadStruct(up)
 
     p.Reset()
@@ -65,11 +48,6 @@ func TestStructSimple(t *testing.T) {
     }
 }
 
-/*
-type RequireStruct struct {
-	Ss test2.SimpleStruct `json:"ss"`
-}
-*/
 func TestRequireStruct(t *testing.T) {
     p := codec.NewPacker()
 
@@ -90,24 +68,6 @@ func TestRequireStruct(t *testing.T) {
     }
 }
 
-/*
-type DefaultStruct struct {
-	B  bool   `json:"b"`
-	By int8   `json:"by"`
-	S  int16  `json:"s"`
-	I  int32  `json:"i"`
-	L  int64  `json:"l"`
-	Ss string `json:"ss"`
-}
-struct defaultStruct {
-    0   optional bool b = true;
-    1   optional byte by = 1;
-    2   optional short s = 10;
-    3   optional int i = 1;
-    4   optional long l = 0x0FFFFFFFFFFFFFFF;
-    5   optional string ss = "yellia";
-};
-*/
 func TestDefaultStruct(t *testing.T) {
     p := codec.NewPacker()
     var ss test.DefaultStruct
@@ -126,5 +86,69 @@ func TestDefaultStruct(t *testing.T) {
         ss2.L != 0x0FFFFFFFFFFFFFFF ||
         ss2.Ss != "yellia" {
         t.Fatalf("read struct %v", ss2)
+    }
+}
+
+func TestPrintSdp(t *testing.T) {
+    s := Test2.Student{}
+    s.ResetDefault()
+    s.IUid = 1234567890;
+    s.SName = "学生1";
+    s.IAge = 12;
+    s.MSecret = make(map[string]string)
+    s.MSecret["yellia"] = "hello"
+    s.MSecret["luo"] = "juan"
+
+    cl := Test2.Class{}
+    cl.ResetDefault()
+    cl.IId = 1001
+    cl.SName = "c1"
+    cl.VStudent = append(cl.VStudent, s)
+    cl.VStudent = append(cl.VStudent, s)
+    cl.VData = append(cl.VData, 'c')
+
+    tc := Test2.Teacher{}
+    tc.ResetDefault()
+    tc.IId = 1001
+    tc.S1 = s
+    cl.VTeacher = append(cl.VTeacher, tc)
+
+    sc := Test2.School{}
+    sc.ResetDefault()
+    sc.MClass = make(map[uint32]Test2.Class)
+    sc.MClass[1001] = cl
+    sc.MClass[1002] = cl
+
+    t.Log("\n"+codec.PrintSdp(&sc))
+}
+
+func TestC(t *testing.T) {
+    packer := codec.NewPacker()
+
+    s := Test2.Student{}
+    s.ResetDefault()
+    s.IUid = 1234567890;
+    s.SName = "学生1";
+    s.IAge = 12;
+    s.WriteStructFromTag(packer, 15, true)
+
+    cl := Test2.Class{}
+    cl.ResetDefault()
+    cl.IId = 1001
+    cl.SName = "c1"
+    cl.VStudent = append(cl.VStudent, s)
+    cl.VData = append(cl.VData, 'c')
+
+    tc := Test2.Teacher{}
+    tc.ResetDefault()
+    tc.IId = 1001
+    cl.VTeacher = append(cl.VTeacher, tc)
+    cl.WriteStructFromTag(packer, 16, true)
+
+    right := "7F0F00D285D8CC044107E5ADA6E7949F31020C807F1000E9074102633152017000D285D8CC044107E5ADA6E7949F31020C8043016354017000E90773808080"
+    real := fmt.Sprintf("%X", packer.ToBytes())
+
+    if strings.Index(right, real) == -1 {
+        fmt.Printf("right:%s\n,real:%s\n", right, real)
     }
 }

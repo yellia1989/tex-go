@@ -3,6 +3,8 @@ package codec
 import (
     "testing"
     "math"
+    "fmt"
+    "strings"
 )
 
 func unpacker(p *Packer) *UnPacker {
@@ -396,5 +398,52 @@ func BenchmarkString(t *testing.B) {
         if v != "hahahahahahahahahahahahahahahahahahahaha" {
             t.Error("no eq.")
         }
+    }
+}
+
+func TestC(t *testing.T) {
+    // 测试pack结果与c++是否一致
+    packer := NewPacker()
+
+    packer.WriteBool(0, true)
+    packer.WriteByte(1, 'a')
+    packer.WriteInt8(2, int8(-1))
+    packer.WriteUint8(3, uint8(1))
+    packer.WriteInt16(4, int16(-1))
+    packer.WriteUint16(5, uint16(1))
+    packer.WriteInt32(6, int32(-1))
+    packer.WriteUint32(7, uint32(1))
+    packer.WriteInt64(8, int64(-1))
+    packer.WriteUint64(9, uint64(1))
+    packer.WriteFloat32(10, float32(0.1))
+    packer.WriteFloat64(11, float64(0.1))
+    packer.WriteString(12, "yellia")
+
+    vec := make([]uint32,0)
+    vec = append(vec, 1)
+    vec = append(vec, 2)
+    packer.WriteHeader(13, SdpType_Vector)
+    length := len(vec)
+    packer.WriteNumber32(uint32(length))
+    for _, v := range vec {
+        packer.WriteUint32(0, v)
+    }
+
+    ma := make(map[int32]int32)
+    ma[1] = 1
+    ma[2] = 2
+    packer.WriteHeader(14, SdpType_Map)
+    length = len(ma)
+    packer.WriteNumber32(uint32(length))
+    for _k, _v := range ma {
+        packer.WriteInt32(0, _k)
+        packer.WriteInt32(0, _v)
+    }
+
+    right := "00010161120103011401050116010701180109012ACD99B3EE033B9AB3E6CC99B3E6DC3F4C0679656C6C69615D02000100026E020001000100020002"
+    real := fmt.Sprintf("%X", packer.ToBytes())
+
+    if strings.Index(right, real) == -1 {
+        fmt.Printf("right:%s\n,real:%s\n", right, real)
     }
 }

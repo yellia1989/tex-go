@@ -47,6 +47,7 @@ type serviceCfg struct {
 
 type clientCfg struct {
     locator string
+    division string
     invokeTimeout time.Duration
     endpointRefreshInterval time.Duration
     adapterSendQueueCap int

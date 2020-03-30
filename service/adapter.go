@@ -1,10 +1,3 @@
-/*
-* adapter的作用就是负责发送和接受请求
-* req sync.Map保存的是protocol.RequestPacket的消息
-* 每个消息发送后会开启定时器计时，时间到还没返回的消息则设置
-* protocol.ResponsePacket的ret为超时
-*/
-
 package tex
 
 import (
@@ -15,7 +8,7 @@ import (
     "time"
     "errors"
     "encoding/binary"
-    "github.com/yellia1989/tex-go/service/protocol/protocol"
+    "github.com/yellia1989/tex-go/sdp/protocol"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
     "github.com/yellia1989/tex-go/tools/net"
     "github.com/yellia1989/tex-go/tools/log"
@@ -23,7 +16,7 @@ import (
 )
 
 const (
-    adapterActiveInterval = 5 * time.Second // 每10秒检查一下活跃连接
+    adapterActiveInterval = 10 * time.Second // 每10秒检查一下活跃连接
     adapterConsfail = 5 // 最大持续接受消息失败次数
     adapterMinfail = 2 // 最小接受小时失败次数
     adapterFailpation = 50/100 // 消息接受失败率
@@ -48,7 +41,7 @@ type adapterProxy struct {
     req sync.Map // 请求队列
 }
 
-func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.ResponsePacket) error {
+func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp **protocol.ResponsePacket) error {
     // 请求队列已经达到最大值,直接报错
     mu := &adapter.mu
     mu.Lock()
@@ -93,7 +86,7 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
         atomic.StoreUint32(&adapter.consfailTotal, 0)
         log.FDebugf("got response, ret:%d, cost:%d ms, reqid:%d, adapter:%s", resp2.IRet, time.Since(begintime).Milliseconds(), req.IRequestId, adapter.ep)
         if resp2.IRet == protocol.SDPSERVERSUCCESS {
-            *resp = *resp2
+            *resp = resp2
         } else {
             return fmt.Errorf("remote server err, ret:%d", resp2.IRet)
         }
@@ -103,10 +96,8 @@ func (adapter *adapterProxy) invoke(req *protocol.RequestPacket, resp *protocol.
 }
 
 func (adapter *adapterProxy) send(req *protocol.RequestPacket) error {
-    p := codec.NewPacker()
-    req.WriteStruct(p)
+    b1 := codec.SdpToString(req)
 
-    b1 := p.ToBytes()
     total := len(b1)+4
     b2 := make([]byte, total)
     binary.BigEndian.PutUint32(b2, uint32(total))
@@ -157,12 +148,14 @@ func (adapter *adapterProxy) Parse(bytes []byte) (int,int) {
 }
 
 func (adapter *adapterProxy) Recv(pkg []byte) {
-    up := codec.NewUnPacker(pkg[4:])
+    defer func() {
+        err := recover()
+        if err != nil {
+            log.FErrorf("parse ResponsePacket err:%v, adapter:%s", err, adapter.ep)
+        }
+    }()
     resp := &protocol.ResponsePacket{}
-    if err := resp.ReadStruct(up); err != nil {
-        log.FErrorf("parse ResponsePacket err:%s, adapter:%s", err.Error(), adapter.ep)
-        return
-    }
+    codec.StringToSdp(pkg[4:], resp)
 
     req, ok := adapter.req.Load(resp.IRequestId)
     if !ok {
@@ -180,7 +173,6 @@ func (adapter *adapterProxy) checkActive() {
     for {
         select {
         case <-adapter.done:
-            adapter.done <- true
             break
         case <-loop.C:
             // 持续失败达到一定次数后强制关闭连接

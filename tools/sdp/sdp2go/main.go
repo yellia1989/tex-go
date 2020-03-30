@@ -9,6 +9,7 @@ import (
 
 // 生成文件保存路径
 var dir = flag.String("dir", "./", "dir to save generated code")
+var beauty = flag.Bool("format", true, "format code")
 
 func usage() {
     bin := os.Args[0]
@@ -29,7 +30,7 @@ func main() {
     }
 
     for _, file := range flag.Args() {
-        sdp2Go := newSdp2Go(file, *dir)
+        sdp2Go := newSdp2Go(file, *dir, *beauty)
         sdp2Go.generate()
     }
 }

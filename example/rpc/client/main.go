@@ -8,7 +8,7 @@ import (
     "os/signal"
     tex "github.com/yellia1989/tex-go/service"
     "github.com/yellia1989/tex-go/tools/log"
-    "github.com/yellia1989/tex-go/example/server/echo"
+    "github.com/yellia1989/tex-go/example/rpc/server/echo"
 )
 
 var done sync.WaitGroup
@@ -41,7 +41,7 @@ func main() {
         done.Add(1)
         go func(id int) {
             log.Debugf("client:%d start", id)
-            comm := tex.NewCommunicator()
+            comm := tex.NewCommunicator("")
             defer func() {
                 comm.Close()
             }()
@@ -102,7 +102,11 @@ func (p *Qps) round() {
     p.qpstime = 0
     p.mu.Unlock()
 
-    log.Debugf("QPS:%d,time:%d ms", qps, t.Milliseconds()/int64(qps))
+    if qps == 0 {
+        log.Debugf("QPS:%d,time:%d ms", 0, 0)
+    } else {
+        log.Debugf("QPS:%d,time:%d ms", qps, t.Milliseconds()/int64(qps))
+    }
 }
 
 func (p *Qps) avg() {

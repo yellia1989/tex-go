@@ -2,21 +2,27 @@ package tex
 
 import (
     "sync"
+    "fmt"
 )
 
 type Communicator struct {
     mu sync.Mutex
     mPrx map[string]*servicePrxImpl
+    sLocator string
 }
 
-func NewCommunicator() *Communicator {
+func NewCommunicator(locator string) *Communicator {
     comm := &Communicator{}
     comm.mPrx = make(map[string]*servicePrxImpl)
+    comm.sLocator = locator
 
     return comm
 }
 
 func (comm *Communicator) StringToProxy(name string, prx ServicePrx) error {
+    if name == "" {
+        return fmt.Errorf("service obj name required")
+    }
     comm.mu.Lock()
 
     if impl, ok := comm.mPrx[name]; ok {
@@ -31,9 +37,13 @@ func (comm *Communicator) StringToProxy(name string, prx ServicePrx) error {
         return err
     }
     comm.mu.Lock()
+    if impl, ok := comm.mPrx[name]; ok {
+        comm.mu.Unlock()
+        prx.SetPrxImpl(impl)
+        return nil
+    }
     comm.mPrx[name] = impl
     comm.mu.Unlock()
-    impl.SetTimeout(cliCfg.invokeTimeout)
     prx.SetPrxImpl(impl)
     return nil
 }

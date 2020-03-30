@@ -7,9 +7,8 @@ import (
     "time"
     "sync/atomic"
     "encoding/binary"
-    "github.com/yellia1989/tex-go/service/protocol/protocol"
+    "github.com/yellia1989/tex-go/sdp/protocol"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
-    "github.com/yellia1989/tex-go/tools/log"
 )
 
 type Current struct {
@@ -27,23 +26,20 @@ func (c *Current) SendResponse(pkg []byte) {
 }
 
 func (c *Current) SendTexResponse(ret int32, pkg []byte) {
-    p := codec.NewPacker()
     resp := protocol.ResponsePacket{}
+    resp.ResetDefault()
     resp.IRet = ret
     resp.IRequestId = c.Request.IRequestId
     resp.SRspPayload = string(pkg)
 
-    resp.WriteStruct(p)
+    b1 := codec.SdpToString(&resp)
 
-    b1 := p.ToBytes()
     total := len(b1)+4
     b2 := make([]byte, total)
     binary.BigEndian.PutUint32(b2, uint32(total))
     copy(b2[4:], b1)
 
     c.svr.Send(c.ID, b2)
-
-    log.FDebugf("resp cost:%dms", time.Since(c.start).Milliseconds())
 }
 
 func (c *Current) Close() {
