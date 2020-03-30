@@ -3,8 +3,11 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/yellia1989/tex-go/tools/sdp/codec"
+	"github.com/yellia1989/tex-go/tools/sdp/util"
+	"strconv"
 )
 
 type SimpleStruct struct {
@@ -24,6 +27,48 @@ type SimpleStruct struct {
 }
 
 func (st *SimpleStruct) ResetDefault() {
+}
+func (st *SimpleStruct) Visit(buff *bytes.Buffer, t int) {
+	util.Tab(buff, t+1, util.Fieldname("b")+fmt.Sprintf("%v\n", st.B))
+	util.Tab(buff, t+1, util.Fieldname("by")+fmt.Sprintf("%v\n", st.By))
+	util.Tab(buff, t+1, util.Fieldname("s")+fmt.Sprintf("%v\n", st.S))
+	util.Tab(buff, t+1, util.Fieldname("us")+fmt.Sprintf("%v\n", st.Us))
+	util.Tab(buff, t+1, util.Fieldname("i")+fmt.Sprintf("%v\n", st.I))
+	util.Tab(buff, t+1, util.Fieldname("ui")+fmt.Sprintf("%v\n", st.Ui))
+	util.Tab(buff, t+1, util.Fieldname("l")+fmt.Sprintf("%v\n", st.L))
+	util.Tab(buff, t+1, util.Fieldname("ul")+fmt.Sprintf("%v\n", st.Ul))
+	util.Tab(buff, t+1, util.Fieldname("f")+fmt.Sprintf("%v\n", st.F))
+	util.Tab(buff, t+1, util.Fieldname("d")+fmt.Sprintf("%v\n", st.D))
+	util.Tab(buff, t+1, util.Fieldname("ss")+fmt.Sprintf("%v\n", st.Ss))
+	util.Tab(buff, t+1, util.Fieldname("vi")+strconv.Itoa(len(st.Vi)))
+	if len(st.Vi) == 0 {
+		buff.WriteString(", []\n")
+	} else {
+		buff.WriteString(", [\n")
+	}
+	for _, v := range st.Vi {
+
+		util.Tab(buff, t+1+1, util.Fieldname("")+fmt.Sprintf("%v\n", v))
+	}
+	if len(st.Vi) != 0 {
+		util.Tab(buff, t+1, "]\n")
+	}
+	util.Tab(buff, t+1, util.Fieldname("mi")+strconv.Itoa(len(st.Mi)))
+	if len(st.Mi) == 0 {
+		buff.WriteString(", {}\n")
+	} else {
+		buff.WriteString(", {\n")
+	}
+	for k, v := range st.Mi {
+		util.Tab(buff, t+1+1, "(\n")
+
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", k))
+		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", v))
+		util.Tab(buff, t+1+1, ")\n")
+	}
+	if len(st.Mi) != 0 {
+		util.Tab(buff, t+1, "}\n")
+	}
 }
 func (st *SimpleStruct) ReadStruct(up *codec.UnPacker) error {
 	var err error
@@ -324,6 +369,11 @@ type RequireStruct struct {
 func (st *RequireStruct) ResetDefault() {
 	st.Ss.ResetDefault()
 }
+func (st *RequireStruct) Visit(buff *bytes.Buffer, t int) {
+	util.Tab(buff, t+1, util.Fieldname("ss")+"{\n")
+	st.Ss.Visit(buff, t+1+1)
+	util.Tab(buff, t+1, "}\n")
+}
 func (st *RequireStruct) ReadStruct(up *codec.UnPacker) error {
 	var err error
 	var length uint32
@@ -437,6 +487,14 @@ func (st *DefaultStruct) ResetDefault() {
 	st.I = 1
 	st.L = 0x0FFFFFFFFFFFFFFF
 	st.Ss = "yellia"
+}
+func (st *DefaultStruct) Visit(buff *bytes.Buffer, t int) {
+	util.Tab(buff, t+1, util.Fieldname("b")+fmt.Sprintf("%v\n", st.B))
+	util.Tab(buff, t+1, util.Fieldname("by")+fmt.Sprintf("%v\n", st.By))
+	util.Tab(buff, t+1, util.Fieldname("s")+fmt.Sprintf("%v\n", st.S))
+	util.Tab(buff, t+1, util.Fieldname("i")+fmt.Sprintf("%v\n", st.I))
+	util.Tab(buff, t+1, util.Fieldname("l")+fmt.Sprintf("%v\n", st.L))
+	util.Tab(buff, t+1, util.Fieldname("ss")+fmt.Sprintf("%v\n", st.Ss))
 }
 func (st *DefaultStruct) ReadStruct(up *codec.UnPacker) error {
 	var err error
