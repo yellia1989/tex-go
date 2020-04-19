@@ -47,3 +47,18 @@ func TestAtoMB(t *testing.T) {
         }
     }
 }
+
+func TestSliceRemove(t *testing.T) {
+    s1 := []uint32{1,2,3,4}
+    s2 := []string{"1","2","3"}
+
+    SliceRemoveUint32(&s1, 1)
+    if Contain(s1, 1) {
+        t.Fatal("remove uint32 failed")
+    }
+
+    SliceRemoveString(&s2, "1")
+    if Contain(s2, "1") {
+        t.Fatal("remove string failed")
+    }
+}
