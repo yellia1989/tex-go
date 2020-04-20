@@ -58,8 +58,13 @@ func (impl *servicePrxImpl) close() {
 
 func newPrxImpl(name string, comm *Communicator) (*servicePrxImpl, error) {
     serviceName := name
-    if p := strings.Index(name, "@"); p != -1 {
+    if p := strings.Index(name, "%"); p != -1 {
+        // 去掉分区
         serviceName = name[:p]
+    }
+    if p := strings.Index(serviceName, "@"); p != -1 {
+        // 去掉endpoint
+        serviceName = serviceName[:p]
     }
     impl := &servicePrxImpl{name: serviceName, comm: comm, invokeTimeout: cliCfg.invokeTimeout}
 
