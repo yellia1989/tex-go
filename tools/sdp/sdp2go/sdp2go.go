@@ -466,7 +466,7 @@ switch req.SFuncName {`)
 
     for _, f := range v.funcs {
         s2g.Write(`case "` + f.oldname + `":
-        err = _` + f.name + `Impl(ctx, serviceImpl, up, p)
+        err = _` + v.name+f.name + `Impl(ctx, serviceImpl, up, p)
         if err != nil {
             break
         }
@@ -489,7 +489,7 @@ switch req.SFuncName {`)
 }
 
 func (s2g *sdp2Go) genInterfaceFunc(itf *interfaceInfo, f *funcInfo) {
-    s2g.Write("func _" + f.name + "Impl(ctx context.Context, serviceImpl interface{}, up *codec.UnPacker, p *codec.Packer) error {")
+    s2g.Write("func _" + itf.name+f.name + "Impl(ctx context.Context, serviceImpl interface{}, up *codec.UnPacker, p *codec.Packer) error {")
     s2g.Write("var err error")
     s2g.Write("var length int")
     s2g.Write("impl := serviceImpl.(_" + itf.name + "Impl)")
