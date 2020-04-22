@@ -1,9 +1,16 @@
 module rpc
 {
+    struct ObjEndpoint {
+        0 optional string sObj;
+        1 optional string sDivision;
+        2 optional string sEp;
+    };
+
     interface Query
     {
     	int getEndpoints(string sObj, string sDivision, out vector<string> vActiveEps, out vector<string> vInactiveEps);
 		int addEndpoint(string sObj, string sDivision, string ep);
 		int removeEndpoint(string sObj, string sDivision, string ep);
+        int getAllEndpoints(out vector<ObjEndpoint> vObj);
     };
 };

@@ -100,7 +100,11 @@ func (epmgr *endpointManager) refreshEndpoint() error {
     log.FDebugf("registry query endpoint start, obj:%s", epmgr.sObjName)
     ret, err := epmgr.query.GetEndpoints(epmgr.sObjName, epmgr.sDivision, &vActiveEps, &vInactiveEps)
     if ret != 0 || err != nil {
-        log.FErrorf("registry query endpoint failed, obj:%s, err:%s, ret:%d", epmgr.sObjName, err.Error(), ret)
+        serr := ""
+        if err != nil {
+            serr = err.Error()
+        }
+        log.FErrorf("registry query endpoint failed, obj:%s, division:%s, err:%s, ret:%d", epmgr.sObjName, epmgr.sDivision, serr, ret)
         return err
     }
     log.FDebugf("registry query endpoint success, obj:%s", epmgr.sObjName)
