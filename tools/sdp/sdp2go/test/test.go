@@ -28,6 +28,30 @@ type SimpleStruct struct {
 
 func (st *SimpleStruct) ResetDefault() {
 }
+func (st *SimpleStruct) Copy() *SimpleStruct {
+	ret := &SimpleStruct{}
+	ret.ResetDefault()
+	ret.B = st.B
+	ret.By = st.By
+	ret.S = st.S
+	ret.Us = st.Us
+	ret.I = st.I
+	ret.Ui = st.Ui
+	ret.L = st.L
+	ret.Ul = st.Ul
+	ret.F = st.F
+	ret.D = st.D
+	ret.Ss = st.Ss
+	ret.Vi = make([]int32, len(st.Vi))
+	for i, _ := range st.Vi {
+		ret.Vi[i] = st.Vi[i]
+	}
+	ret.Mi = make(map[int32]int32)
+	for k, _ := range st.Mi {
+		ret.Mi[k] = st.Mi[k]
+	}
+	return ret
+}
 func (st *SimpleStruct) Visit(buff *bytes.Buffer, t int) {
 	util.Tab(buff, t+1, util.Fieldname("b")+fmt.Sprintf("%v\n", st.B))
 	util.Tab(buff, t+1, util.Fieldname("by")+fmt.Sprintf("%v\n", st.By))
@@ -47,7 +71,6 @@ func (st *SimpleStruct) Visit(buff *bytes.Buffer, t int) {
 		buff.WriteString(", [\n")
 	}
 	for _, v := range st.Vi {
-
 		util.Tab(buff, t+1+1, util.Fieldname("")+fmt.Sprintf("%v\n", v))
 	}
 	if len(st.Vi) != 0 {
@@ -61,7 +84,6 @@ func (st *SimpleStruct) Visit(buff *bytes.Buffer, t int) {
 	}
 	for k, v := range st.Mi {
 		util.Tab(buff, t+1+1, "(\n")
-
 		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", k))
 		util.Tab(buff, t+1+2, util.Fieldname("")+fmt.Sprintf("%v\n", v))
 		util.Tab(buff, t+1+1, ")\n")
@@ -204,7 +226,7 @@ func (st *SimpleStruct) ReadStructFromTag(up *codec.UnPacker, tag uint32, requir
 }
 func (st *SimpleStruct) WriteStruct(p *codec.Packer) error {
 	var err error
-	var length int
+	var length uint32
 	if false || st.B != false {
 		err = p.WriteBool(0, st.B)
 		if err != nil {
@@ -272,7 +294,7 @@ func (st *SimpleStruct) WriteStruct(p *codec.Packer) error {
 		}
 	}
 
-	length = len(st.Vi)
+	length = uint32(len(st.Vi))
 	if false || length != 0 {
 		err = p.WriteHeader(11, codec.SdpType_Vector)
 		if err != nil {
@@ -292,7 +314,7 @@ func (st *SimpleStruct) WriteStruct(p *codec.Packer) error {
 		}
 	}
 
-	length = len(st.Mi)
+	length = uint32(len(st.Mi))
 	if false || length != 0 {
 		err = p.WriteHeader(12, codec.SdpType_Map)
 		if err != nil {
@@ -302,6 +324,7 @@ func (st *SimpleStruct) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
+		err = p.WriteNumber32(uint32(length))
 		for _k, _v := range st.Mi {
 			if true || _k != 0 {
 				err = p.WriteInt32(0, _k)
@@ -369,6 +392,12 @@ type RequireStruct struct {
 func (st *RequireStruct) ResetDefault() {
 	st.Ss.ResetDefault()
 }
+func (st *RequireStruct) Copy() *RequireStruct {
+	ret := &RequireStruct{}
+	ret.ResetDefault()
+	ret.Ss = *st.Ss.Copy()
+	return ret
+}
 func (st *RequireStruct) Visit(buff *bytes.Buffer, t int) {
 	util.Tab(buff, t+1, util.Fieldname("ss")+"{\n")
 	st.Ss.Visit(buff, t+1+1)
@@ -421,7 +450,7 @@ func (st *RequireStruct) ReadStructFromTag(up *codec.UnPacker, tag uint32, requi
 }
 func (st *RequireStruct) WriteStruct(p *codec.Packer) error {
 	var err error
-	var length int
+	var length uint32
 	err = st.Ss.WriteStructFromTag(p, 0, true)
 	if err != nil {
 		return err
@@ -487,6 +516,17 @@ func (st *DefaultStruct) ResetDefault() {
 	st.I = 1
 	st.L = 0x0FFFFFFFFFFFFFFF
 	st.Ss = "yellia"
+}
+func (st *DefaultStruct) Copy() *DefaultStruct {
+	ret := &DefaultStruct{}
+	ret.ResetDefault()
+	ret.B = st.B
+	ret.By = st.By
+	ret.S = st.S
+	ret.I = st.I
+	ret.L = st.L
+	ret.Ss = st.Ss
+	return ret
 }
 func (st *DefaultStruct) Visit(buff *bytes.Buffer, t int) {
 	util.Tab(buff, t+1, util.Fieldname("b")+fmt.Sprintf("%v\n", st.B))
@@ -563,7 +603,7 @@ func (st *DefaultStruct) ReadStructFromTag(up *codec.UnPacker, tag uint32, requi
 }
 func (st *DefaultStruct) WriteStruct(p *codec.Packer) error {
 	var err error
-	var length int
+	var length uint32
 	if false || st.B != true {
 		err = p.WriteBool(0, st.B)
 		if err != nil {

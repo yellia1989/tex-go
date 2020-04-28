@@ -218,8 +218,7 @@ if len(`+prefix+m.name+`) == 0 {
     buff.WriteString(", {\n")
 }
 for k,v := range `+prefix+m.name+` {
-    util.Tab(buff, `+tab+`+1, "(\n")
-`)
+    util.Tab(buff, `+tab+`+1, "(\n")`)
     km := &structMember{} 
     km.ty = m.ty.typeK
     km.name = "k"
@@ -242,8 +241,7 @@ if len(`+prefix+m.name+`) == 0 {
 } else {
     buff.WriteString(", [\n")
 }
-for _,v := range `+prefix+m.name+` {
-`)
+for _,v := range `+prefix+m.name+` {`)
     dummy := &structMember{}
     dummy.ty = m.ty.typeK
     dummy.name = "v"
@@ -274,6 +272,35 @@ func (s2g *sdp2Go) genStructVisit(st *structInfo) {
     s2g.Write("}")
 }
 
+func (s2g *sdp2Go) genStructMemberCopy(retPrefix string, prefix string, m *structMember) {
+    switch m.ty.ty {
+    case tkTMap:
+        s2g.Write(retPrefix + m.name +` = make(`+s2g.genType(m.ty)+`)
+        for k,_ := range `+ prefix + m.name + ` {`)
+            dummy := &structMember{}
+            dummy.ty = m.ty.typeV
+            dummy.name = "[k]"
+            s2g.genStructMemberCopy(retPrefix+m.name, prefix+m.name, dummy)
+        s2g.Write(`}`)
+    case tkTVector:
+        s2g.Write(retPrefix + m.name +` = make(`+s2g.genType(m.ty)+`,len(`+prefix+m.name+`))
+        for i,_ := range `+ prefix + m.name +` {`)
+            dummy := &structMember{}
+            dummy.ty = m.ty.typeK
+            dummy.name = "[i]"
+            s2g.genStructMemberCopy(retPrefix+m.name, prefix+m.name, dummy)
+        s2g.Write(`}`)
+    case tkName:
+        if m.ty.customTy == tkEnum {
+            s2g.Write(retPrefix + m.name + " = " + prefix + m.name)
+        } else {
+            s2g.Write(retPrefix + m.name + " = *" + prefix + m.name + ".Copy()")
+        }
+    default:
+        s2g.Write(retPrefix + m.name + " = " + prefix + m.name)
+    }
+}
+
 func (s2g *sdp2Go) genStruct(st *structInfo) {
     st.rename()
 
@@ -296,6 +323,16 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
         }
         s2g.Write("st." + v.name + " = " + v.defVal)
     }
+    s2g.Write("}")
+
+    // Copy函数
+    s2g.Write("func (st *" + st.name + ") Copy() *" + st.name + " {")
+    s2g.Write("ret := &" + st.name + "{}")
+    s2g.Write("ret.ResetDefault()")
+    for _, v := range st.members {
+        s2g.genStructMemberCopy("ret.", "st.", &v);
+    }
+    s2g.Write("return ret")
     s2g.Write("}")
 
     // Visit
@@ -350,7 +387,7 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
     // 写函数
     s2g.Write(`func (st *` + st.name + `) WriteStruct(p *codec.Packer) error {
         var err error
-        var length int`)
+        var length uint32`)
     for _, v := range st.members {
         s2g.genWriteVar(&v, "st.", false)
     }
@@ -491,7 +528,9 @@ switch req.SFuncName {`)
 func (s2g *sdp2Go) genInterfaceFunc(itf *interfaceInfo, f *funcInfo) {
     s2g.Write("func _" + itf.name+f.name + "Impl(ctx context.Context, serviceImpl interface{}, up *codec.UnPacker, p *codec.Packer) error {")
     s2g.Write("var err error")
-    s2g.Write("var length int")
+    s2g.Write("var length uint32")
+    s2g.Write("var ty uint32")
+    s2g.Write("var has bool")
     s2g.Write("impl := serviceImpl.(_" + itf.name + "Impl)")
     // 读参数
     for i, arg := range f.args {
@@ -559,6 +598,8 @@ func (s2g *sdp2Go) genInterfaceFunc(itf *interfaceInfo, f *funcInfo) {
     }
 
     s2g.Write("_ = length")
+    s2g.Write("_ = ty")
+    s2g.Write("_ = has")
 
     s2g.Write("return nil")
     s2g.Write("}")
@@ -810,7 +851,7 @@ func (s2g *sdp2Go) genWriteVector(v *structMember, prefix string, checkRet bool)
 
     // 针对vector<byte>特殊处理为string类型传输
     if v.ty.typeK.ty == tkTByte {
-    s2g.Write(`length = len(`+ prefix + v.name +`)
+    s2g.Write(`length = uint32(len(`+ prefix + v.name +`))
 if ` + require + `length != 0 {
     stmp := string(` + prefix + v.name + `)
     err = p.WriteString(` + tag + `, stmp)
@@ -818,16 +859,12 @@ if ` + require + `length != 0 {
 }`)
     } else {
     s2g.Write(`
-length = len(`+ prefix + v.name +`)
+length = uint32(len(`+ prefix + v.name +`))
 if ` + require + `length != 0 {
 err = p.WriteHeader(` + tag + `, codec.SdpType_Vector)
-if err != nil {
-    return err
-}
+` + genCheckErr(checkRet) + `
 err = p.WriteNumber32(uint32(length))
-if err != nil {
-    return err
-}
+` + genCheckErr(checkRet) + `
 for _,v := range `+ prefix + v.name+` {`)
     vmember := &structMember{}
     vmember.name = "v"
@@ -899,16 +936,13 @@ func (s2g *sdp2Go) genWriteMap(v *structMember, prefix string, checkRet bool) {
     }
 
     s2g.Write(`
-length = len(`+ prefix + v.name +`)
+length = uint32(len(`+ prefix + v.name +`))
 if ` + require + `length != 0 {
 err = p.WriteHeader(` + tag + `, codec.SdpType_Map)
-if err != nil {
-    return err
-}
+` + genCheckErr(checkRet) + `
 err = p.WriteNumber32(uint32(length))
-if err != nil {
-    return err
-}
+` + genCheckErr(checkRet) + `
+err = p.WriteNumber32(uint32(length))
 for _k,_v := range `+ prefix + v.name+` {`)
     kmember := &structMember{}
     kmember.name = "_k"
