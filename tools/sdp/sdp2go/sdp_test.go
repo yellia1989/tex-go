@@ -5,14 +5,16 @@ import (
     "reflect"
     "fmt"
     "strings"
+    "encoding/hex"
     "github.com/yellia1989/tex-go/tools/sdp/codec"
     "github.com/yellia1989/tex-go/tools/sdp/sdp2go/test"
     "github.com/yellia1989/tex-go/tools/sdp/sdp2go/Test2"
+    "github.com/yellia1989/tex-go/tools/sdp/sdp2go/rpc"
 )
 
 // 简单测试struct的读写
 func TestStructSimple(t *testing.T) {
-    var ss test.SimpleStruct
+    ss := test.NewSimpleStruct()
 
     ss.B = true
     ss.By = 1
@@ -37,11 +39,10 @@ func TestStructSimple(t *testing.T) {
     }
 
     up := codec.NewUnPacker(p.ToBytes())
-    var ss2 test.SimpleStruct
-    ss2.ReadStruct(up)
-
-    p.Reset()
-    ss2.WriteStruct(p)
+    ss2 := test.NewSimpleStruct()
+    if err := ss2.ReadStruct(up); err != nil {
+        t.Fatalf("read struct faild:%s", err)
+    }
 
     if reflect.DeepEqual(ss, ss2) == false {
         t.Fatalf("%v != %v", ss, ss2)
@@ -52,13 +53,13 @@ func TestRequireStruct(t *testing.T) {
     p := codec.NewPacker()
 
     up := codec.NewUnPacker(p.ToBytes())
-    var ss2 test.RequireStruct
+    ss2 := test.NewRequireStruct()
     if err := ss2.ReadStruct(up); err != nil {
         t.Logf("read struct err:%s", err)
     }
 
     p.Reset()
-    var ss test.RequireStruct
+    ss := test.NewRequireStruct()
     if err := ss.WriteStruct(p); err != nil {
         t.Fatalf("write struct err:%s", err)
     }
@@ -70,12 +71,11 @@ func TestRequireStruct(t *testing.T) {
 
 func TestDefaultStruct(t *testing.T) {
     p := codec.NewPacker()
-    var ss test.DefaultStruct
-    ss.ResetDefault()
+    ss := test.NewDefaultStruct()
     ss.WriteStruct(p)
 
     up := codec.NewUnPacker(p.ToBytes())
-    var ss2 test.DefaultStruct
+    ss2 := test.NewDefaultStruct()
     if err := ss2.ReadStruct(up); err != nil {
         t.Fatalf("read struct err:%s", err)
     }
@@ -90,59 +90,52 @@ func TestDefaultStruct(t *testing.T) {
 }
 
 func TestPrintSdp(t *testing.T) {
-    s := Test2.Student{}
-    s.ResetDefault()
-    s.IUid = 1234567890;
-    s.SName = "学生1";
-    s.IAge = 12;
+    s := Test2.NewStudent()
+    s.IUid = 1234567890
+    s.SName = "学生1"
+    s.IAge = 12
     s.MSecret = make(map[string]string)
     s.MSecret["yellia"] = "hello"
     s.MSecret["luo"] = "juan"
 
-    cl := Test2.Class{}
-    cl.ResetDefault()
+    cl := Test2.NewClass()
     cl.IId = 1001
     cl.SName = "c1"
-    cl.VStudent = append(cl.VStudent, s)
-    cl.VStudent = append(cl.VStudent, s)
+    cl.VStudent = append(cl.VStudent, *s.Copy())
+    cl.VStudent = append(cl.VStudent, *s.Copy())
     cl.VData = append(cl.VData, 'c')
 
-    tc := Test2.Teacher{}
-    tc.ResetDefault()
+    tc := Test2.NewTeacher()
     tc.IId = 1001
-    tc.S1 = s
-    cl.VTeacher = append(cl.VTeacher, tc)
+    tc.S1 = *s.Copy()
+    cl.VTeacher = append(cl.VTeacher, *tc.Copy())
 
-    sc := Test2.School{}
-    sc.ResetDefault()
+    sc := Test2.NewSchool()
     sc.MClass = make(map[uint32]Test2.Class)
-    sc.MClass[1001] = cl
-    sc.MClass[1002] = cl
+    sc.MClass[1001] = *cl.Copy()
+    sc.MClass[1002] = *cl.Copy()
 
-    t.Log("\n"+codec.PrintSdp(&sc))
+    t.Log("\n"+codec.PrintSdp(sc))
 }
 
 func TestC(t *testing.T) {
     packer := codec.NewPacker()
 
-    s := Test2.Student{}
-    s.ResetDefault()
-    s.IUid = 1234567890;
-    s.SName = "学生1";
-    s.IAge = 12;
+    s := Test2.NewStudent()
+    s.IUid = 1234567890
+    s.SName = "学生1"
+    s.IAge = 12
     s.WriteStructFromTag(packer, 15, true)
 
-    cl := Test2.Class{}
-    cl.ResetDefault()
+    cl := Test2.NewClass()
     cl.IId = 1001
     cl.SName = "c1"
-    cl.VStudent = append(cl.VStudent, s)
+    cl.VStudent = append(cl.VStudent, *s.Copy())
     cl.VData = append(cl.VData, 'c')
 
-    tc := Test2.Teacher{}
-    tc.ResetDefault()
+    tc := Test2.NewTeacher()
     tc.IId = 1001
-    cl.VTeacher = append(cl.VTeacher, tc)
+    cl.VTeacher = append(cl.VTeacher, *tc.Copy())
     cl.WriteStructFromTag(packer, 16, true)
 
     right := "7F0F00D285D8CC044107E5ADA6E7949F31020C807F1000E9074102633152017000D285D8CC044107E5ADA6E7949F31020C8043016354017000E90773808080"
@@ -150,5 +143,23 @@ func TestC(t *testing.T) {
 
     if strings.Index(right, real) == -1 {
         fmt.Printf("right:%s\n,real:%s\n", right, real)
+    }
+}
+
+func TestMailDataInfo(t *testing.T) {
+    right := "70002e4101614313323032302d30342d33302031353a33313a32364401614501615a02000100025c0100010f140780"
+    decoded, err := hex.DecodeString(right)
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    mail := rpc.NewMailDataInfo()
+    codec.StringToSdp(decoded, mail)
+
+    t.Log(codec.PrintSdp(mail))
+
+    real := hex.EncodeToString(codec.SdpToString(mail))
+    if real != right {
+        t.Fatalf("MailDataInfo test failed, real:%s vs input:%s", real, right)
     }
 }

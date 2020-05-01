@@ -24,19 +24,23 @@ type Student struct {
 	MSecret map[string]string `json:"mSecret"`
 }
 
-func (st *Student) ResetDefault() {
+func (st *Student) resetDefault() {
 	st.IUid = 1
 }
 func (st *Student) Copy() *Student {
-	ret := &Student{}
-	ret.ResetDefault()
+	ret := NewStudent()
 	ret.IUid = st.IUid
 	ret.SName = st.SName
 	ret.IAge = st.IAge
 	ret.MSecret = make(map[string]string)
-	for k, _ := range st.MSecret {
-		ret.MSecret[k] = st.MSecret[k]
+	for k, v := range st.MSecret {
+		ret.MSecret[k] = v
 	}
+	return ret
+}
+func NewStudent() *Student {
+	ret := &Student{}
+	ret.resetDefault()
 	return ret
 }
 func (st *Student) Visit(buff *bytes.Buffer, t int) {
@@ -64,7 +68,7 @@ func (st *Student) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 	err = up.ReadUint64(&st.IUid, 0, false)
 	if err != nil {
 		return err
@@ -79,30 +83,32 @@ func (st *Student) ReadStruct(up *codec.UnPacker) error {
 	}
 
 	has, ty, err = up.SkipToTag(3, false)
-	if !has || err != nil {
-		return err
-	}
-	if ty != codec.SdpType_Map {
-		return fmt.Errorf("tag:%d got wrong type %d", 3, ty)
-	}
-
-	_, length, err = up.ReadNumber32()
 	if err != nil {
 		return err
 	}
-	st.MSecret = make(map[string]string)
-	for i := uint32(0); i < length; i++ {
-		var k string
-		err = up.ReadString(&k, 0, true)
+	if has {
+		if ty != codec.SdpType_Map {
+			return fmt.Errorf("tag:%d got wrong type %d", 3, ty)
+		}
+
+		_, length, err = up.ReadNumber32()
 		if err != nil {
 			return err
 		}
-		var v string
-		err = up.ReadString(&v, 0, true)
-		if err != nil {
-			return err
+		st.MSecret = make(map[string]string)
+		for i := uint32(0); i < length; i++ {
+			var k string
+			err = up.ReadString(&k, 0, true)
+			if err != nil {
+				return err
+			}
+			var v string
+			err = up.ReadString(&v, 0, true)
+			if err != nil {
+				return err
+			}
+			st.MSecret[k] = v
 		}
-		st.MSecret[k] = v
 	}
 
 	_ = length
@@ -115,7 +121,6 @@ func (st *Student) ReadStructFromTag(up *codec.UnPacker, tag uint32, require boo
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
@@ -167,11 +172,10 @@ func (st *Student) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
+		err = p.WriteNumber32(length)
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
 		for _k, _v := range st.MSecret {
 			if true || _k != "" {
 				err = p.WriteString(0, _k)
@@ -239,17 +243,21 @@ type Teacher struct {
 	S2    Student `json:"s2"`
 }
 
-func (st *Teacher) ResetDefault() {
-	st.S1.ResetDefault()
-	st.S2.ResetDefault()
+func (st *Teacher) resetDefault() {
+	st.S1.resetDefault()
+	st.S2.resetDefault()
 }
 func (st *Teacher) Copy() *Teacher {
-	ret := &Teacher{}
-	ret.ResetDefault()
+	ret := NewTeacher()
 	ret.IId = st.IId
 	ret.SName = st.SName
-	ret.S1 = *st.S1.Copy()
-	ret.S2 = *st.S2.Copy()
+	ret.S1 = *(st.S1.Copy())
+	ret.S2 = *(st.S2.Copy())
+	return ret
+}
+func NewTeacher() *Teacher {
+	ret := &Teacher{}
+	ret.resetDefault()
 	return ret
 }
 func (st *Teacher) Visit(buff *bytes.Buffer, t int) {
@@ -267,7 +275,7 @@ func (st *Teacher) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 	err = up.ReadUint32(&st.IId, 0, false)
 	if err != nil {
 		return err
@@ -295,7 +303,6 @@ func (st *Teacher) ReadStructFromTag(up *codec.UnPacker, tag uint32, require boo
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
@@ -391,15 +398,19 @@ type Teachers struct {
 	VTeacher []Teacher `json:"vTeacher"`
 }
 
-func (st *Teachers) ResetDefault() {
+func (st *Teachers) resetDefault() {
 }
 func (st *Teachers) Copy() *Teachers {
-	ret := &Teachers{}
-	ret.ResetDefault()
+	ret := NewTeachers()
 	ret.VTeacher = make([]Teacher, len(st.VTeacher))
-	for i, _ := range st.VTeacher {
-		ret.VTeacher[i] = *st.VTeacher[i].Copy()
+	for i, v := range st.VTeacher {
+		ret.VTeacher[i] = *(v.Copy())
 	}
+	return ret
+}
+func NewTeachers() *Teachers {
+	ret := &Teachers{}
+	ret.resetDefault()
 	return ret
 }
 func (st *Teachers) Visit(buff *bytes.Buffer, t int) {
@@ -423,25 +434,27 @@ func (st *Teachers) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 
 	has, ty, err = up.SkipToTag(0, false)
-	if !has || err != nil {
-		return err
-	}
-	if ty != codec.SdpType_Vector {
-		return fmt.Errorf("tag:%d got wrong type %d", 0, ty)
-	}
-
-	_, length, err = up.ReadNumber32()
 	if err != nil {
 		return err
 	}
-	st.VTeacher = make([]Teacher, length, length)
-	for i := uint32(0); i < length; i++ {
-		err = st.VTeacher[i].ReadStructFromTag(up, 0, true)
+	if has {
+		if ty != codec.SdpType_Vector {
+			return fmt.Errorf("tag:%d got wrong type %d", 0, ty)
+		}
+
+		_, length, err = up.ReadNumber32()
 		if err != nil {
 			return err
+		}
+		st.VTeacher = make([]Teacher, length, length)
+		for i := uint32(0); i < length; i++ {
+			err = st.VTeacher[i].ReadStructFromTag(up, 0, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -455,7 +468,6 @@ func (st *Teachers) ReadStructFromTag(up *codec.UnPacker, tag uint32, require bo
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
@@ -489,7 +501,7 @@ func (st *Teachers) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
+		err = p.WriteNumber32(length)
 		if err != nil {
 			return err
 		}
@@ -553,25 +565,29 @@ type Class struct {
 	VTeacher []Teacher `json:"vTeacher"`
 }
 
-func (st *Class) ResetDefault() {
+func (st *Class) resetDefault() {
 }
 func (st *Class) Copy() *Class {
-	ret := &Class{}
-	ret.ResetDefault()
+	ret := NewClass()
 	ret.IId = st.IId
 	ret.SName = st.SName
 	ret.VStudent = make([]Student, len(st.VStudent))
-	for i, _ := range st.VStudent {
-		ret.VStudent[i] = *st.VStudent[i].Copy()
+	for i, v := range st.VStudent {
+		ret.VStudent[i] = *(v.Copy())
 	}
 	ret.VData = make([]byte, len(st.VData))
-	for i, _ := range st.VData {
-		ret.VData[i] = st.VData[i]
+	for i, v := range st.VData {
+		ret.VData[i] = v
 	}
 	ret.VTeacher = make([]Teacher, len(st.VTeacher))
-	for i, _ := range st.VTeacher {
-		ret.VTeacher[i] = *st.VTeacher[i].Copy()
+	for i, v := range st.VTeacher {
+		ret.VTeacher[i] = *(v.Copy())
 	}
+	return ret
+}
+func NewClass() *Class {
+	ret := &Class{}
+	ret.resetDefault()
 	return ret
 }
 func (st *Class) Visit(buff *bytes.Buffer, t int) {
@@ -623,7 +639,7 @@ func (st *Class) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 	err = up.ReadUint32(&st.IId, 0, true)
 	if err != nil {
 		return err
@@ -634,22 +650,24 @@ func (st *Class) ReadStruct(up *codec.UnPacker) error {
 	}
 
 	has, ty, err = up.SkipToTag(2, false)
-	if !has || err != nil {
-		return err
-	}
-	if ty != codec.SdpType_Vector {
-		return fmt.Errorf("tag:%d got wrong type %d", 2, ty)
-	}
-
-	_, length, err = up.ReadNumber32()
 	if err != nil {
 		return err
 	}
-	st.VStudent = make([]Student, length, length)
-	for i := uint32(0); i < length; i++ {
-		err = st.VStudent[i].ReadStructFromTag(up, 0, true)
+	if has {
+		if ty != codec.SdpType_Vector {
+			return fmt.Errorf("tag:%d got wrong type %d", 2, ty)
+		}
+
+		_, length, err = up.ReadNumber32()
 		if err != nil {
 			return err
+		}
+		st.VStudent = make([]Student, length, length)
+		for i := uint32(0); i < length; i++ {
+			err = st.VStudent[i].ReadStructFromTag(up, 0, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	var sVData string
@@ -660,22 +678,24 @@ func (st *Class) ReadStruct(up *codec.UnPacker) error {
 	st.VData = []byte(sVData)
 
 	has, ty, err = up.SkipToTag(4, true)
-	if !has || err != nil {
-		return err
-	}
-	if ty != codec.SdpType_Vector {
-		return fmt.Errorf("tag:%d got wrong type %d", 4, ty)
-	}
-
-	_, length, err = up.ReadNumber32()
 	if err != nil {
 		return err
 	}
-	st.VTeacher = make([]Teacher, length, length)
-	for i := uint32(0); i < length; i++ {
-		err = st.VTeacher[i].ReadStructFromTag(up, 0, true)
+	if has {
+		if ty != codec.SdpType_Vector {
+			return fmt.Errorf("tag:%d got wrong type %d", 4, ty)
+		}
+
+		_, length, err = up.ReadNumber32()
 		if err != nil {
 			return err
+		}
+		st.VTeacher = make([]Teacher, length, length)
+		for i := uint32(0); i < length; i++ {
+			err = st.VTeacher[i].ReadStructFromTag(up, 0, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -689,7 +709,6 @@ func (st *Class) ReadStructFromTag(up *codec.UnPacker, tag uint32, require bool)
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
@@ -735,7 +754,7 @@ func (st *Class) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
+		err = p.WriteNumber32(length)
 		if err != nil {
 			return err
 		}
@@ -761,7 +780,7 @@ func (st *Class) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
+		err = p.WriteNumber32(length)
 		if err != nil {
 			return err
 		}
@@ -821,15 +840,19 @@ type School struct {
 	MClass map[uint32]Class `json:"mClass"`
 }
 
-func (st *School) ResetDefault() {
+func (st *School) resetDefault() {
 }
 func (st *School) Copy() *School {
-	ret := &School{}
-	ret.ResetDefault()
+	ret := NewSchool()
 	ret.MClass = make(map[uint32]Class)
-	for k, _ := range st.MClass {
-		ret.MClass[k] = *st.MClass[k].Copy()
+	for k, v := range st.MClass {
+		ret.MClass[k] = *(v.Copy())
 	}
+	return ret
+}
+func NewSchool() *School {
+	ret := &School{}
+	ret.resetDefault()
 	return ret
 }
 func (st *School) Visit(buff *bytes.Buffer, t int) {
@@ -856,33 +879,35 @@ func (st *School) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 
 	has, ty, err = up.SkipToTag(0, false)
-	if !has || err != nil {
-		return err
-	}
-	if ty != codec.SdpType_Map {
-		return fmt.Errorf("tag:%d got wrong type %d", 0, ty)
-	}
-
-	_, length, err = up.ReadNumber32()
 	if err != nil {
 		return err
 	}
-	st.MClass = make(map[uint32]Class)
-	for i := uint32(0); i < length; i++ {
-		var k uint32
-		err = up.ReadUint32(&k, 0, true)
+	if has {
+		if ty != codec.SdpType_Map {
+			return fmt.Errorf("tag:%d got wrong type %d", 0, ty)
+		}
+
+		_, length, err = up.ReadNumber32()
 		if err != nil {
 			return err
 		}
-		var v Class
-		err = v.ReadStructFromTag(up, 0, true)
-		if err != nil {
-			return err
+		st.MClass = make(map[uint32]Class)
+		for i := uint32(0); i < length; i++ {
+			var k uint32
+			err = up.ReadUint32(&k, 0, true)
+			if err != nil {
+				return err
+			}
+			var v Class
+			err = v.ReadStructFromTag(up, 0, true)
+			if err != nil {
+				return err
+			}
+			st.MClass[k] = v
 		}
-		st.MClass[k] = v
 	}
 
 	_ = length
@@ -895,7 +920,6 @@ func (st *School) ReadStructFromTag(up *codec.UnPacker, tag uint32, require bool
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
@@ -929,11 +953,10 @@ func (st *School) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
+		err = p.WriteNumber32(length)
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
 		for _k, _v := range st.MClass {
 			if true || _k != 0 {
 				err = p.WriteUint32(0, _k)

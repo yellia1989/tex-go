@@ -26,11 +26,10 @@ type SimpleStruct struct {
 	Mi map[int32]int32 `json:"mi"`
 }
 
-func (st *SimpleStruct) ResetDefault() {
+func (st *SimpleStruct) resetDefault() {
 }
 func (st *SimpleStruct) Copy() *SimpleStruct {
-	ret := &SimpleStruct{}
-	ret.ResetDefault()
+	ret := NewSimpleStruct()
 	ret.B = st.B
 	ret.By = st.By
 	ret.S = st.S
@@ -43,13 +42,18 @@ func (st *SimpleStruct) Copy() *SimpleStruct {
 	ret.D = st.D
 	ret.Ss = st.Ss
 	ret.Vi = make([]int32, len(st.Vi))
-	for i, _ := range st.Vi {
-		ret.Vi[i] = st.Vi[i]
+	for i, v := range st.Vi {
+		ret.Vi[i] = v
 	}
 	ret.Mi = make(map[int32]int32)
-	for k, _ := range st.Mi {
-		ret.Mi[k] = st.Mi[k]
+	for k, v := range st.Mi {
+		ret.Mi[k] = v
 	}
+	return ret
+}
+func NewSimpleStruct() *SimpleStruct {
+	ret := &SimpleStruct{}
+	ret.resetDefault()
 	return ret
 }
 func (st *SimpleStruct) Visit(buff *bytes.Buffer, t int) {
@@ -97,7 +101,7 @@ func (st *SimpleStruct) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 	err = up.ReadBool(&st.B, 0, false)
 	if err != nil {
 		return err
@@ -144,50 +148,54 @@ func (st *SimpleStruct) ReadStruct(up *codec.UnPacker) error {
 	}
 
 	has, ty, err = up.SkipToTag(11, false)
-	if !has || err != nil {
-		return err
-	}
-	if ty != codec.SdpType_Vector {
-		return fmt.Errorf("tag:%d got wrong type %d", 11, ty)
-	}
-
-	_, length, err = up.ReadNumber32()
 	if err != nil {
 		return err
 	}
-	st.Vi = make([]int32, length, length)
-	for i := uint32(0); i < length; i++ {
-		err = up.ReadInt32(&st.Vi[i], 0, true)
+	if has {
+		if ty != codec.SdpType_Vector {
+			return fmt.Errorf("tag:%d got wrong type %d", 11, ty)
+		}
+
+		_, length, err = up.ReadNumber32()
 		if err != nil {
 			return err
+		}
+		st.Vi = make([]int32, length, length)
+		for i := uint32(0); i < length; i++ {
+			err = up.ReadInt32(&st.Vi[i], 0, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	has, ty, err = up.SkipToTag(12, false)
-	if !has || err != nil {
-		return err
-	}
-	if ty != codec.SdpType_Map {
-		return fmt.Errorf("tag:%d got wrong type %d", 12, ty)
-	}
-
-	_, length, err = up.ReadNumber32()
 	if err != nil {
 		return err
 	}
-	st.Mi = make(map[int32]int32)
-	for i := uint32(0); i < length; i++ {
-		var k int32
-		err = up.ReadInt32(&k, 0, true)
+	if has {
+		if ty != codec.SdpType_Map {
+			return fmt.Errorf("tag:%d got wrong type %d", 12, ty)
+		}
+
+		_, length, err = up.ReadNumber32()
 		if err != nil {
 			return err
 		}
-		var v int32
-		err = up.ReadInt32(&v, 0, true)
-		if err != nil {
-			return err
+		st.Mi = make(map[int32]int32)
+		for i := uint32(0); i < length; i++ {
+			var k int32
+			err = up.ReadInt32(&k, 0, true)
+			if err != nil {
+				return err
+			}
+			var v int32
+			err = up.ReadInt32(&v, 0, true)
+			if err != nil {
+				return err
+			}
+			st.Mi[k] = v
 		}
-		st.Mi[k] = v
 	}
 
 	_ = length
@@ -200,7 +208,6 @@ func (st *SimpleStruct) ReadStructFromTag(up *codec.UnPacker, tag uint32, requir
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
@@ -300,7 +307,7 @@ func (st *SimpleStruct) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
+		err = p.WriteNumber32(length)
 		if err != nil {
 			return err
 		}
@@ -320,11 +327,10 @@ func (st *SimpleStruct) WriteStruct(p *codec.Packer) error {
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
+		err = p.WriteNumber32(length)
 		if err != nil {
 			return err
 		}
-		err = p.WriteNumber32(uint32(length))
 		for _k, _v := range st.Mi {
 			if true || _k != 0 {
 				err = p.WriteInt32(0, _k)
@@ -389,13 +395,17 @@ type RequireStruct struct {
 	Ss SimpleStruct `json:"ss"`
 }
 
-func (st *RequireStruct) ResetDefault() {
-	st.Ss.ResetDefault()
+func (st *RequireStruct) resetDefault() {
+	st.Ss.resetDefault()
 }
 func (st *RequireStruct) Copy() *RequireStruct {
+	ret := NewRequireStruct()
+	ret.Ss = *(st.Ss.Copy())
+	return ret
+}
+func NewRequireStruct() *RequireStruct {
 	ret := &RequireStruct{}
-	ret.ResetDefault()
-	ret.Ss = *st.Ss.Copy()
+	ret.resetDefault()
 	return ret
 }
 func (st *RequireStruct) Visit(buff *bytes.Buffer, t int) {
@@ -408,7 +418,7 @@ func (st *RequireStruct) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 	err = st.Ss.ReadStructFromTag(up, 0, true)
 	if err != nil {
 		return err
@@ -424,7 +434,6 @@ func (st *RequireStruct) ReadStructFromTag(up *codec.UnPacker, tag uint32, requi
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
@@ -509,7 +518,7 @@ type DefaultStruct struct {
 	Ss string `json:"ss"`
 }
 
-func (st *DefaultStruct) ResetDefault() {
+func (st *DefaultStruct) resetDefault() {
 	st.B = true
 	st.By = 1
 	st.S = 10
@@ -518,14 +527,18 @@ func (st *DefaultStruct) ResetDefault() {
 	st.Ss = "yellia"
 }
 func (st *DefaultStruct) Copy() *DefaultStruct {
-	ret := &DefaultStruct{}
-	ret.ResetDefault()
+	ret := NewDefaultStruct()
 	ret.B = st.B
 	ret.By = st.By
 	ret.S = st.S
 	ret.I = st.I
 	ret.L = st.L
 	ret.Ss = st.Ss
+	return ret
+}
+func NewDefaultStruct() *DefaultStruct {
+	ret := &DefaultStruct{}
+	ret.resetDefault()
 	return ret
 }
 func (st *DefaultStruct) Visit(buff *bytes.Buffer, t int) {
@@ -541,7 +554,7 @@ func (st *DefaultStruct) ReadStruct(up *codec.UnPacker) error {
 	var length uint32
 	var has bool
 	var ty uint32
-	st.ResetDefault()
+	st.resetDefault()
 	err = up.ReadBool(&st.B, 0, false)
 	if err != nil {
 		return err
@@ -577,7 +590,6 @@ func (st *DefaultStruct) ReadStructFromTag(up *codec.UnPacker, tag uint32, requi
 	var err error
 	var has bool
 	var ty uint32
-	st.ResetDefault()
 
 	has, ty, err = up.SkipToTag(tag, require)
 	if !has || err != nil {
