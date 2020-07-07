@@ -164,6 +164,16 @@ func (c *Config) GetInt(key string, def int) int {
     return i
 }
 
+func (c *Config) GetBool(key string, def bool) bool {
+    sdef := "0"
+    if def {
+        sdef = "1"
+    }
+    v := c.GetCfg(key, sdef)
+    i,_ := strconv.Atoi(v)
+    return i != 0
+}
+
 func (c *Config) GetDuration(key string, def string) time.Duration {
     v := c.GetCfg(key, def)
     return AtoDuration(v)

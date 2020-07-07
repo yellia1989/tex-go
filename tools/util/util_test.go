@@ -2,6 +2,7 @@ package util
 
 import (
     "testing"
+    "github.com/stretchr/testify/assert"
 )
 
 func TestConfig(t *testing.T) {
@@ -28,6 +29,15 @@ func TestConfig(t *testing.T) {
             }
         }
     })
+
+    i := c.GetInt("testint", 0)
+    assert.Equal(t, 100, i)
+
+    b := c.GetBool("testbool", false)
+    assert.Equal(t, true, b)
+
+    b2 := c.GetBool("testbool2", false)
+    assert.Equal(t, false, b2)
 }
 
 func TestAtoMB(t *testing.T) {
