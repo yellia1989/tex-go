@@ -143,6 +143,17 @@ func (s2g *sdp2Go) genEnum(en *enumInfo) {
         s2g.Write(v.name + " = " + strconv.Itoa(int(v.value)))
     }
     s2g.Write(")")
+
+    s2g.Write(`func (en ` + en.name + `) String() string {
+ret := ""
+switch en {`)
+    for _, v := range en.members {
+    s2g.Write(`case `+v.name+`:
+ret = "`+v.name+`"`)
+    }
+s2g.Write(`}
+return ret
+}`)
 }
 
 func (s2g *sdp2Go) genConst(csts []constInfo) {
