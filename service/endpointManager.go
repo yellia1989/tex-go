@@ -81,12 +81,14 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager, error) {
 
         go func() {
             ticker := time.NewTicker(epmgr.refreshInterval)
-            select {
-            case <-ticker.C:
-                epmgr.refreshEndpoint()
-            case <-epmgr.done:
-                ticker.Stop()
-                return
+            for {
+                select {
+                case <-ticker.C:
+                    epmgr.refreshEndpoint()
+                case <-epmgr.done:
+                    ticker.Stop()
+                    return
+                }
             }
         }()
     }
@@ -129,7 +131,7 @@ func (epmgr *endpointManager) refreshEndpoint() error {
         mAdapter[*ep] = adapter
     }
     if len(mAdapter) == 0 {
-        return fmt.Errorf("no active endpoint")
+        return fmt.Errorf("no active endpoint, obj:%s", epmgr.sObjName)
     }
 
     // 待关闭的adapter
@@ -189,6 +191,7 @@ func (epmgr *endpointManager) selectHashAdapter(hashCode uint64) (*adapterProxy,
 
     vEndpoint := epmgr.vEndpoint
     vEndpoint2 := make([]*Endpoint, 0)
+    vEndpoint3 := make([]*Endpoint, 0)
     for {
         p := int(hashCode % uint64(len(vEndpoint)))
         ep := vEndpoint[p]
@@ -202,6 +205,8 @@ func (epmgr *endpointManager) selectHashAdapter(hashCode uint64) (*adapterProxy,
         }
         if atomic.LoadInt32(&adapter.connfailed) != 1 {
             vEndpoint2 = append(vEndpoint2, vEndpoint[p])
+        } else {
+            vEndpoint3 = append(vEndpoint3, vEndpoint[p])
         }
         vEndpoint = append(vEndpoint[:p],vEndpoint[p+1:]...)
         if len(vEndpoint) == 0 {
@@ -210,10 +215,20 @@ func (epmgr *endpointManager) selectHashAdapter(hashCode uint64) (*adapterProxy,
     }
 
     // 到此为止，我们已经没有了活跃连接可用
-    // 这时可以尝试不稳定连接,但不使用直接连接失败(connfailed==1)的连接
+    // 这时可以尝试不稳定连接
     if len(vEndpoint2) != 0 {
         p := int(hashCode % uint64(len(vEndpoint2)))
         ep := vEndpoint2[p]
+        adapter := epmgr.mAdapter[*ep]
+        if adapter.isActive(true) {
+            return adapter, nil
+        }
+    }
+
+    // 不使用直接连接失败(connfailed==1)的连接
+    if len(vEndpoint3) != 0 {
+        p := int(hashCode % uint64(len(vEndpoint3)))
+        ep := vEndpoint3[p]
         adapter := epmgr.mAdapter[*ep]
         if adapter.isActive(true) {
             return adapter, nil
@@ -237,6 +252,7 @@ func (epmgr *endpointManager) selectNextAdapter() (*adapterProxy, error) {
     // 总共尝试的次数,超过这个次数说明不可能找到可用的adapter
     count := l
     vEndpoint2 := make([]*Endpoint, 0)
+    vEndpoint3 := make([]*Endpoint, 0)
     for count > 0 {
         epmgr.index += 1
         if epmgr.index >= l {
@@ -253,15 +269,27 @@ func (epmgr *endpointManager) selectNextAdapter() (*adapterProxy, error) {
         }
         if atomic.LoadInt32(&adapter.connfailed) != 1 {
             vEndpoint2 = append(vEndpoint2, ep)
+        } else {
+            vEndpoint3 = append(vEndpoint3, ep)
         }
         count -= 1
     }
 
     // 到此为止，我们已经没有了活跃连接可用
-    // 这时可以尝试不稳定连接,但不使用直接连接失败(connfailed==1)的连接
+    // 这时可以先尝试不稳定连接
     if len(vEndpoint2) != 0 {
         p := rand.Int() % len(vEndpoint2)
         ep := vEndpoint2[p]
+        adapter := epmgr.mAdapter[*ep]
+        if adapter.isActive(true) {
+            return adapter, nil
+        }
+    }
+
+    // 再使用直接连接失败(connfailed==1)的连接
+    if len(vEndpoint3) != 0 {
+        p := rand.Int() % len(vEndpoint3)
+        ep := vEndpoint3[p]
         adapter := epmgr.mAdapter[*ep]
         if adapter.isActive(true) {
             return adapter, nil

@@ -88,9 +88,9 @@ func (cli *Cli) connect() error {
     cli.writech = make(chan []byte, cli.cfg.WriteQueueCap)
     log.FDebugf("connect to %s %s success", cli.cfg.Proto, cli.address)
 
-    // 开启一个独立的携程写
+    // 开启一个独立的协程写
     go cli.doWrite()
-    // 开启一个独立的携程读
+    // 开启一个独立的协程读
     go cli.doRead()
 
     return nil

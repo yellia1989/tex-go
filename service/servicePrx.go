@@ -18,7 +18,8 @@ type servicePrxImpl struct {
     comm *Communicator
     epmgr *endpointManager
 
-    invokeTimeout time.Duration
+    invokeTimeout uint32
+
     reqid uint32
 }
 
@@ -29,7 +30,7 @@ func (impl *servicePrxImpl) Invoke(sFuncName string, params []byte, resp **proto
         SServiceName: impl.name,
         SFuncName: sFuncName,
         SReqPayload: string(params),
-        ITimeout: uint32(impl.invokeTimeout.Milliseconds()),
+        ITimeout: impl.invokeTimeout,
     }
 
     // 选择一个adapterProxy发送消息
@@ -49,7 +50,7 @@ func (impl *servicePrxImpl) Invoke(sFuncName string, params []byte, resp **proto
 }
 
 func (impl *servicePrxImpl) SetTimeout(timeout time.Duration) {
-    impl.invokeTimeout = timeout
+    impl.invokeTimeout = uint32(timeout.Milliseconds())
 }
 
 func (impl *servicePrxImpl) close() {
@@ -66,7 +67,7 @@ func newPrxImpl(name string, comm *Communicator) (*servicePrxImpl, error) {
         // 去掉endpoint
         serviceName = serviceName[:p]
     }
-    impl := &servicePrxImpl{name: serviceName, comm: comm, invokeTimeout: cliCfg.invokeTimeout}
+    impl := &servicePrxImpl{name: serviceName, comm: comm, invokeTimeout: uint32(cliCfg.invokeTimeout.Milliseconds())}
 
     var err error
     impl.epmgr, err = newEpMgr(name, comm)
