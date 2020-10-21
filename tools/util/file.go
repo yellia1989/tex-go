@@ -50,3 +50,11 @@ func SaveToFile(file string, content []byte, append bool) error {
     }
     return nil
 }
+
+func Mkdir(path string) error {
+    if err := os.MkdirAll(path, 775); err != nil {
+        return err
+    }
+
+    return nil
+}
