@@ -52,7 +52,7 @@ func SaveToFile(file string, content []byte, append bool) error {
 }
 
 func Mkdir(path string) error {
-    if err := os.MkdirAll(path, 775); err != nil {
+    if err := os.MkdirAll(path, 0775); err != nil {
         return err
     }
 
