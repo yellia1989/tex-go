@@ -628,6 +628,7 @@ func newParse(file string) *parse {
     }
     if len(p.structs) != 0 {
         imports := []string{
+            `"fmt"`,
             `"strconv"`,
             `"bytes"`,
             `"github.com/yellia1989/tex-go/tools/sdp/codec"`,

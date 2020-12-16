@@ -18,7 +18,7 @@ struct simpleStruct {
 };
 
 struct requireStruct {
-	0 require simpleStruct ss;
+	0 required simpleStruct ss;
 };
 
 struct defaultStruct {

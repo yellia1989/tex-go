@@ -337,13 +337,14 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
     s2g.Write("}")
 
     // Copy函数
-    s2g.Write("func (st *" + st.name + ") Copy() *" + st.name + " {")
+    /*s2g.Write("func (st *" + st.name + ") Copy() *" + st.name + " {")
     s2g.Write("ret := New" + st.name + "()")
     for _, v := range st.members {
         s2g.genStructMemberCopy("ret.", "st.", &v, "st."+v.name);
     }
     s2g.Write("return ret")
     s2g.Write("}")
+    */
 
     // New函数
     s2g.Write("func New" + st.name + "() *" + st.name + " {")
@@ -809,6 +810,7 @@ func (s2g *sdp2Go) genReadVar(v *structMember, prefix string, checkRet bool) {
 }
 
 func (s2g *sdp2Go) genReadVector(v *structMember, prefix string, checkRet bool) {
+    prefix2 := strings.ReplaceAll(prefix,".","")
     tag := strconv.Itoa(int(v.tag))
     require := "false"
     if v.require {
@@ -817,10 +819,10 @@ func (s2g *sdp2Go) genReadVector(v *structMember, prefix string, checkRet bool) 
 
     // 针对vector<byte>特殊处理为string类型接受
     if v.ty.typeK.ty == tkTByte {
-        s2g.Write(`var s` + v.name + ` string
-err = up.ReadString(&s` + v.name + `, ` + tag + `, ` + require + `)
+        s2g.Write(`var s` + prefix2 + v.name + ` string
+err = up.ReadString(&s` + prefix2 +v.name + `, ` + tag + `, ` + require + `)
 ` + genCheckErr(checkRet) + `
-` + prefix + v.name + ` = []byte(s` + v.name + `)`)
+` + prefix + v.name + ` = []byte(s` + prefix2 +v.name + `)`)
     } else {
 
     checkErr := "return err"
@@ -896,6 +898,7 @@ s2g.Write("}")
 }
 
 func (s2g *sdp2Go) genReadMap(v *structMember, prefix string, checkRet bool) {
+    prefix2 := strings.ReplaceAll(prefix, ".", "")
     tag := strconv.Itoa(int(v.tag))
     require := "false"
     if v.require {
@@ -929,20 +932,20 @@ if err != nil {
 ` + prefix + v.name + ` = make(` + s2g.genType(v.ty) + `)
 for i := uint32(0); i < length; i++ {`)
 
-    s2g.Write("var k " + s2g.genType(v.ty.typeK))
+    s2g.Write("var "+prefix2+v.name+"k " + s2g.genType(v.ty.typeK))
     kmember := &structMember{}
     kmember.require = true
     kmember.ty = v.ty.typeK
     kmember.name = "k"
-    s2g.genReadVar(kmember, "", checkRet)
+    s2g.genReadVar(kmember, prefix2+v.name, checkRet)
 
-    s2g.Write("var v " + s2g.genType(v.ty.typeV))
+    s2g.Write("var "+prefix2+v.name+"v " + s2g.genType(v.ty.typeV))
     vmember := &structMember{}
     vmember.require = true
     vmember.ty = v.ty.typeV
     vmember.name = "v"
-    s2g.genReadVar(vmember, "", checkRet)
-    s2g.Write(prefix + v.name + "[k] = v")
+    s2g.genReadVar(vmember, prefix2+v.name, checkRet)
+    s2g.Write(prefix + v.name + "["+prefix2+v.name+"k] = "+prefix2+v.name+"v")
 
 s2g.Write("}")
 s2g.Write("}")

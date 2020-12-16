@@ -86,7 +86,7 @@ var TokenMap = [...]string{
 	tkEnum:      "enum",
 	tkStruct:    "struct",
 	tkInterface: "interface",
-	tkRequire:   "require",
+	tkRequire:   "required",
 	tkOptional:  "optional",
 	tkConst:     "const",
 	tkUnsigned:  "unsigned",

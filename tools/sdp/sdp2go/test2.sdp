@@ -17,7 +17,7 @@ struct Teacher {
     0   optional unsigned int iId;
     1   optional string sName;
     2   optional Student s1;
-    3   require Student s2;
+    3   required Student s2;
 };
 
 struct Teachers {
@@ -25,11 +25,11 @@ struct Teachers {
 };
 
 struct Class {
-    0   require unsigned int iId;
+    0   required unsigned int iId;
     1   optional string sName;
     2   optional vector<Student> vStudent;
     3   optional vector<char> vData;
-    4   require vector<Teacher> vTeacher;
+    4   required vector<Teacher> vTeacher;
 };
 
 struct School {

@@ -17,6 +17,17 @@ const (
 	NUMBER_2 = 2
 )
 
+func (en NUMBER) String() string {
+	ret := ""
+	switch en {
+	case NUMBER_1:
+		ret = "NUMBER_1"
+	case NUMBER_2:
+		ret = "NUMBER_2"
+	}
+	return ret
+}
+
 type Student struct {
 	IUid    uint64            `json:"iUid"`
 	SName   string            `json:"sName"`
@@ -97,17 +108,17 @@ func (st *Student) ReadStruct(up *codec.UnPacker) error {
 		}
 		st.MSecret = make(map[string]string)
 		for i := uint32(0); i < length; i++ {
-			var k string
-			err = up.ReadString(&k, 0, true)
+			var stMSecretk string
+			err = up.ReadString(&stMSecretk, 0, true)
 			if err != nil {
 				return err
 			}
-			var v string
-			err = up.ReadString(&v, 0, true)
+			var stMSecretv string
+			err = up.ReadString(&stMSecretv, 0, true)
 			if err != nil {
 				return err
 			}
-			st.MSecret[k] = v
+			st.MSecret[stMSecretk] = stMSecretv
 		}
 	}
 
@@ -670,12 +681,12 @@ func (st *Class) ReadStruct(up *codec.UnPacker) error {
 			}
 		}
 	}
-	var sVData string
-	err = up.ReadString(&sVData, 3, false)
+	var sstVData string
+	err = up.ReadString(&sstVData, 3, false)
 	if err != nil {
 		return err
 	}
-	st.VData = []byte(sVData)
+	st.VData = []byte(sstVData)
 
 	has, ty, err = up.SkipToTag(4, true)
 	if err != nil {
@@ -896,17 +907,17 @@ func (st *School) ReadStruct(up *codec.UnPacker) error {
 		}
 		st.MClass = make(map[uint32]Class)
 		for i := uint32(0); i < length; i++ {
-			var k uint32
-			err = up.ReadUint32(&k, 0, true)
+			var stMClassk uint32
+			err = up.ReadUint32(&stMClassk, 0, true)
 			if err != nil {
 				return err
 			}
-			var v Class
-			err = v.ReadStructFromTag(up, 0, true)
+			var stMClassv Class
+			err = stMClassv.ReadStructFromTag(up, 0, true)
 			if err != nil {
 				return err
 			}
-			st.MClass[k] = v
+			st.MClass[stMClassk] = stMClassv
 		}
 	}
 

@@ -184,17 +184,17 @@ func (st *SimpleStruct) ReadStruct(up *codec.UnPacker) error {
 		}
 		st.Mi = make(map[int32]int32)
 		for i := uint32(0); i < length; i++ {
-			var k int32
-			err = up.ReadInt32(&k, 0, true)
+			var stMik int32
+			err = up.ReadInt32(&stMik, 0, true)
 			if err != nil {
 				return err
 			}
-			var v int32
-			err = up.ReadInt32(&v, 0, true)
+			var stMiv int32
+			err = up.ReadInt32(&stMiv, 0, true)
 			if err != nil {
 				return err
 			}
-			st.Mi[k] = v
+			st.Mi[stMik] = stMiv
 		}
 	}
 
