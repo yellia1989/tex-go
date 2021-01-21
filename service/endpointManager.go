@@ -151,6 +151,7 @@ func (epmgr *endpointManager) refreshEndpoint() error {
         _, ok := epmgr.mAdapter[ep]
         if !ok {
             epmgr.mAdapter[ep] = adapter
+            go adapter.checkActive()
             changed = true
         }
     }

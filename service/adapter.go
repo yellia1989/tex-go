@@ -170,6 +170,8 @@ func (adapter *adapterProxy) Recv(pkg []byte) {
 
 func (adapter *adapterProxy) checkActive() {
     loop := time.NewTicker(adapterActiveInterval)
+    defer loop.Stop()
+
     for {
         select {
         case <-adapter.done:
@@ -192,7 +194,6 @@ func (adapter *adapterProxy) checkActive() {
             }
         }
     }
-    loop.Stop()
 }
 
 func (adapter *adapterProxy) close() {
@@ -221,8 +222,6 @@ func newAdapter(ep *Endpoint) (*adapterProxy, error) {
                 WriteQueueCap: cliCfg.adapterSendQueueCap,
                 IdleTimeout: cliCfg.adapterIdleTimeout,
             }, adapter)
-
-    go adapter.checkActive()
 
     return adapter, nil
 }
