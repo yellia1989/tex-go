@@ -10,7 +10,7 @@ import (
 
 // 应用程序必须实现的接口
 type app interface {
-    Init()
+    Init() error
     Loop()
     Terminate()
 }
@@ -49,7 +49,10 @@ func Run(svr app) {
     }
 
     // 初始化应用程序
-    svr.Init()
+    if err := svr.Init(); err != nil {
+        log.FErrorf("init server err:%s", err.Error())
+        return
+    }
 
     // 监听信号
     c := make(chan os.Signal)

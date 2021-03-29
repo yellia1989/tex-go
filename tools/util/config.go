@@ -111,6 +111,9 @@ func (c *Config) String() string {
 }
 
 func (c *Config) GetCfg(path string, def string) string {
+    if path != "" && path[0] == '/' {
+        path = path[1:]
+    }
     if len(path) == 0 {
         return def
     }
