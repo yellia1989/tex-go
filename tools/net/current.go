@@ -26,6 +26,10 @@ func (c *Current) SendResponse(pkg []byte) {
 }
 
 func (c *Current) SendTexResponse(ret int32, pkg []byte) {
+    if c.Request.BIsOneWay {
+        return
+    }
+
     resp := protocol.ResponsePacket{}
     resp.ResetDefault()
     resp.IRet = ret
