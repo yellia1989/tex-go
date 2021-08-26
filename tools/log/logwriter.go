@@ -1,7 +1,6 @@
 package log
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,7 +15,7 @@ const (
 
 //LogWriter is interface for different writer.
 type LogWriter interface {
-	Write(v []byte)
+	Write(v []byte) (n int, err error)
 	NeedPrefix() bool
 }
 
@@ -54,21 +53,23 @@ type HourWriter struct {
 //DateType is uint8
 type DateType uint8
 
-func reOpenFile(path string, currFile **os.File, openTime *int64) {
+func reOpenFile(path string, currFile **os.File, openTime *int64) error {
     cfg := cfg.Load().(config)
 	*openTime = cfg.currUnixTime
 	if *currFile != nil {
 		(*currFile).Close()
 	}
 	of, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-	if err == nil {
-		*currFile = of
-	} else {
-		fmt.Println("open log file error", err)
-	}
+	if err != nil {
+        return err
+    }
+
+    *currFile = of
+    return nil
 }
-func (w *ConsoleWriter) Write(v []byte) {
-	os.Stdout.Write(v)
+
+func (w *ConsoleWriter) Write(v []byte) (n int, err error){
+	return os.Stdout.Write(v)
 }
 
 //NeedPrefix shows whether needs the prefix for the console writer.
@@ -77,16 +78,19 @@ func (w *ConsoleWriter) NeedPrefix() bool {
 }
 
 //Write for writing []byte to the writter.
-func (w *RollFileWriter) Write(v []byte) {
+func (w *RollFileWriter) Write(v []byte) (n int, err error) {
     cfg := cfg.Load().(config)
 	if w.currFile == nil || w.openTime+10 < cfg.currUnixTime {
 		fullPath := filepath.Join(w.logpath, w.name+".log")
-		reOpenFile(fullPath, &w.currFile, &w.openTime)
+		err = reOpenFile(fullPath, &w.currFile, &w.openTime)
+        if err != nil {
+            return
+        }
 	}
-	if w.currFile == nil {
-		return
-	}
-	n, _ := w.currFile.Write(v)
+	n, err = w.currFile.Write(v)
+    if err != nil {
+        return
+    }
 	w.currSize += int64(n)
 	if w.currSize >= w.size {
 		w.currSize = 0
@@ -103,8 +107,13 @@ func (w *RollFileWriter) Write(v []byte) {
 			}
 		}
 		fullPath := filepath.Join(w.logpath, w.name+".log")
-		reOpenFile(fullPath, &w.currFile, &w.openTime)
+		err = reOpenFile(fullPath, &w.currFile, &w.openTime)
+        if err != nil {
+            return
+        }
 	}
+
+    return
 }
 
 //NewRollFileWriter returns a RollFileWriter, rotate logs in sizeMB , and num files are keeped.
@@ -129,24 +138,32 @@ func (w *RollFileWriter) NeedPrefix() bool {
 }
 
 //Write method implement for the DateWriter
-func (w *DateWriter) Write(v []byte) {
+func (w *DateWriter) Write(v []byte) (n int, err error) {
     cfg := cfg.Load().(config)
 	if w.currFile == nil || w.openTime+10 < cfg.currUnixTime {
 		fullPath := filepath.Join(w.logpath, w.name+"_"+w.currDate+".log")
-		reOpenFile(fullPath, &w.currFile, &w.openTime)
-	}
-	if w.currFile == nil {
-		return
+		err = reOpenFile(fullPath, &w.currFile, &w.openTime)
+        if err != nil {
+            return
+        }
 	}
 
-	w.currFile.Write(v)
+	n, err = w.currFile.Write(v)
+    if err != nil {
+        return
+    }
 	currDate := w.getCurrDate()
 	if w.currDate != currDate {
 		w.currDate = currDate
 		w.cleanOldLogs()
 		fullPath := filepath.Join(w.logpath, w.name+"_"+w.currDate+".log")
-		reOpenFile(fullPath, &w.currFile, &w.openTime)
+		err = reOpenFile(fullPath, &w.currFile, &w.openTime)
+        if err != nil {
+            return
+        }
 	}
+
+    return
 }
 
 //NeedPrefix shows whether needs prefix info for DateWriter or not.

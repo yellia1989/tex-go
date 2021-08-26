@@ -145,12 +145,22 @@ func SetLevel(level LogLevel) {
     mu.Unlock()
 }
 
+func GetLevel() LogLevel {
+    old := cfg.Load().(config)
+    return old.logLevel
+}
+
 func SetFrameworkLevel(level LogLevel) {
     mu.Lock()
     old := cfg.Load().(config)
     old.framework_logLevel = level
     cfg.Store(old)
     mu.Unlock()
+}
+
+func GetFrameworkLevel() LogLevel {
+    old := cfg.Load().(config)
+    return old.framework_logLevel
 }
 
 //StringToLevel turns string to LogLevel
@@ -195,6 +205,10 @@ func (l *Logger) IsConsoleWriter() bool {
 //SetWriter sets the writer to the logger.
 func (l *Logger) SetWriter(w LogWriter) {
 	l.writer = w
+}
+
+func (l *Logger) GetWriter() LogWriter {
+    return l.writer
 }
 
 //SetDayRoller sets the logger to rotate by day, with max num files.
