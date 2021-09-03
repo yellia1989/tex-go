@@ -318,7 +318,7 @@ func (s2g *sdp2Go) genStruct(st *structInfo) {
     // 结构体定义
     s2g.Write("type " + st.name + " struct {")
     for _, v := range st.members {
-        s2g.Write(v.name + " " + s2g.genType(v.ty) + " `json:\"" + v.oldname + "\"`")
+        s2g.Write(v.name + " " + s2g.genType(v.ty) + " `json:\"" + v.oldname + "\" form:\"" + v.oldname + "\"`")
     }
     s2g.Write("}")
 
