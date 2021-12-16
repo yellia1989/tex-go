@@ -57,7 +57,7 @@ func (impl *servicePrxImpl) close() {
     impl.epmgr.close()
 }
 
-func newPrxImpl(name string, comm *Communicator) (*servicePrxImpl, error) {
+func newPrxImpl(name string, comm *Communicator) (*servicePrxImpl) {
     serviceName := name
     if p := strings.Index(name, "%"); p != -1 {
         // 去掉分区
@@ -67,13 +67,6 @@ func newPrxImpl(name string, comm *Communicator) (*servicePrxImpl, error) {
         // 去掉endpoint
         serviceName = serviceName[:p]
     }
-    impl := &servicePrxImpl{name: serviceName, comm: comm, invokeTimeout: uint32(cliCfg.invokeTimeout.Milliseconds())}
 
-    var err error
-    impl.epmgr, err = newEpMgr(name, comm)
-    if err != nil {
-        return nil, err
-    }
-
-    return impl,nil
+    return &servicePrxImpl{name: serviceName, comm: comm, invokeTimeout: uint32(cliCfg.invokeTimeout.Milliseconds()), epmgr: newEpMgr(name, comm)}
 }

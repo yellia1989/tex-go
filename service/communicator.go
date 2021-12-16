@@ -32,10 +32,7 @@ func (comm *Communicator) StringToProxy(name string, prx ServicePrx) error {
     }
 
     comm.mu.Unlock()
-    impl, err := newPrxImpl(name, comm)
-    if err != nil {
-        return err
-    }
+    impl := newPrxImpl(name, comm)
     comm.mu.Lock()
     if impl, ok := comm.mPrx[name]; ok {
         comm.mu.Unlock()

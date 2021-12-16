@@ -27,13 +27,12 @@ type endpointManager struct {
     done chan bool
 
     mu sync.Mutex
-    ready bool
     mAdapter map[Endpoint]*adapterProxy
     vEndpoint []*Endpoint
     index int
 }
 
-func newEpMgr(objName string, comm *Communicator) (*endpointManager, error) {
+func newEpMgr(objName string, comm *Communicator) (*endpointManager) {
     epmgr := &endpointManager{sObjName: objName, comm: comm, refreshInterval: cliCfg.endpointRefreshInterval}
     epmgr.mAdapter = make(map[Endpoint]*adapterProxy)
     epmgr.sDivision = cliCfg.division
@@ -42,25 +41,17 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager, error) {
     if p != -1 {
         epmgr.sObjName = objName[:p]
         epmgr.direct = true
-        epmgr.ready = true
         vEndpoint := strings.Split(objName[p+1:], ":")
         for _, ep := range vEndpoint {
-            ep, err := NewEndpoint(ep)
-            if err != nil {
-                return nil, err
+            if ep, err := NewEndpoint(ep); err == nil {
+                epmgr.vEndpoint = append(epmgr.vEndpoint, ep)
             }
-            epmgr.vEndpoint = append(epmgr.vEndpoint, ep)
-        }
-        if len(epmgr.vEndpoint) == 0 {
-            return nil, fmt.Errorf("empty endpoints for obj:%s", epmgr.sObjName)
         }
         // 根据endpoint创建adapter
         for _, ep := range epmgr.vEndpoint {
-            adapter, err := newAdapter(ep)
-            if err != nil {
-                return nil,fmt.Errorf("create adapter for ep:%s, obj:%s, err:%s", ep, epmgr.sObjName, err.Error())
+            if adapter, err := newAdapter(ep); err == nil {
+                epmgr.mAdapter[*ep] = adapter
             }
-            epmgr.mAdapter[*ep] = adapter
         }
     } else {
         epmgr.sObjName = objName
@@ -71,13 +62,7 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager, error) {
         }
         epmgr.query = new(rpc.Query)
         epmgr.done = make(chan bool)
-        if strings.Index(comm.sLocator, "@") == -1 {
-            return nil, fmt.Errorf("invalid locator")
-        }
         comm.StringToProxy(comm.sLocator, epmgr.query)
-        if err := epmgr.refreshEndpoint(); err != nil {
-            return nil, err
-        }
 
         go func() {
             ticker := time.NewTicker(epmgr.refreshInterval)
@@ -93,10 +78,10 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager, error) {
         }()
     }
 
-    return epmgr, nil
+    return epmgr
 }
 
-func (epmgr *endpointManager) refreshEndpoint() error {
+func (epmgr *endpointManager) refreshEndpoint() {
     var vActiveEps []string
     var vInactiveEps []string
     log.FDebugf("registry query endpoint start, obj:%s", epmgr.sObjName)
@@ -107,7 +92,7 @@ func (epmgr *endpointManager) refreshEndpoint() error {
             serr = err.Error()
         }
         log.FErrorf("registry query endpoint failed, obj:%s, division:%s, err:%s, ret:%d", epmgr.sObjName, epmgr.sDivision, serr, ret)
-        return err
+        return
     }
     log.FDebugf("registry query endpoint success, obj:%s", epmgr.sObjName)
 
@@ -131,7 +116,8 @@ func (epmgr *endpointManager) refreshEndpoint() error {
         mAdapter[*ep] = adapter
     }
     if len(mAdapter) == 0 {
-        return fmt.Errorf("no active endpoint, obj:%s", epmgr.sObjName)
+        log.FErrorf("no active endpoint, obj:%s", epmgr.sObjName)
+        return
     }
 
     // 待关闭的adapter
@@ -159,17 +145,11 @@ func (epmgr *endpointManager) refreshEndpoint() error {
         epmgr.vEndpoint = vEndpoint
     }
 
-    if !epmgr.ready {
-        epmgr.ready = true
-    }
-
     epmgr.mu.Unlock()
 
     for _, adapter := range closeAdapter {
         adapter.close()
     }
-
-    return nil
 }
 
 func (epmgr *endpointManager) selectAdapter(bHash bool, hashCode uint64) (*adapterProxy, error) {
