@@ -817,10 +817,12 @@ func (s2g *sdp2Go) genReadVector(v *structMember, prefix string, checkRet bool) 
 
     // 针对vector<byte>特殊处理为string类型接受
     if v.ty.typeK.ty == tkTByte {
-        s2g.Write(`var s` + v.name + ` string
-err = up.ReadString(&s` + v.name + `, ` + tag + `, ` + require + `)
+        tmpname := strings.ReplaceAll(v.name, "(*", "")
+        tmpname = strings.ReplaceAll(tmpname, ")", "")
+        s2g.Write(`var s` + tmpname + ` string
+err = up.ReadString(&s` + tmpname + `, ` + tag + `, ` + require + `)
 ` + genCheckErr(checkRet) + `
-` + prefix + v.name + ` = []byte(s` + v.name + `)`)
+` + prefix + v.name + ` = []byte(s` + tmpname + `)`)
     } else {
 
     checkErr := "return err"
