@@ -161,9 +161,10 @@ func (epmgr *endpointManager) selectAdapter(bHash bool, hashCode uint64) (*adapt
     mu := &epmgr.mu
     mu.Lock()
     if !epmgr.ready {
+        mu.Unlock()
         epmgr.refreshEndpoint()
     }
-    epmgr.mu.Unlock()
+    mu.Unlock()
 
     if bHash {
         return epmgr.selectHashAdapter(hashCode)
