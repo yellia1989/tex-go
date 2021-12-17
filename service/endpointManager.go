@@ -42,6 +42,7 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager) {
     if p != -1 {
         epmgr.sObjName = objName[:p]
         epmgr.direct = true
+        epmgr.ready = true
         vEndpoint := strings.Split(objName[p+1:], ":")
         for _, ep := range vEndpoint {
             if ep, err := NewEndpoint(ep); err == nil {
