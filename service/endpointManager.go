@@ -160,11 +160,11 @@ func (epmgr *endpointManager) refreshEndpoint() {
 func (epmgr *endpointManager) selectAdapter(bHash bool, hashCode uint64) (*adapterProxy, error) {
     mu := &epmgr.mu
     mu.Lock()
-    if !epmgr.ready {
-        mu.Unlock()
+    ready := epmgr.ready
+    mu.Unlock()
+    if !ready {
         epmgr.refreshEndpoint()
     }
-    mu.Unlock()
 
     if bHash {
         return epmgr.selectHashAdapter(hashCode)
