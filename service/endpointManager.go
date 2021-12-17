@@ -30,6 +30,7 @@ type endpointManager struct {
     mAdapter map[Endpoint]*adapterProxy
     vEndpoint []*Endpoint
     index int
+    ready bool
 }
 
 func newEpMgr(objName string, comm *Communicator) (*endpointManager) {
@@ -145,6 +146,10 @@ func (epmgr *endpointManager) refreshEndpoint() {
         epmgr.vEndpoint = vEndpoint
     }
 
+    if !epmgr.ready {
+        epmgr.ready = true
+    }
+
     epmgr.mu.Unlock()
 
     for _, adapter := range closeAdapter {
@@ -153,6 +158,13 @@ func (epmgr *endpointManager) refreshEndpoint() {
 }
 
 func (epmgr *endpointManager) selectAdapter(bHash bool, hashCode uint64) (*adapterProxy, error) {
+    mu := &epmgr.mu
+    mu.Lock()
+    if !epmgr.ready {
+        epmgr.refreshEndpoint()
+    }
+    epmgr.mu.Unlock()
+
     if bHash {
         return epmgr.selectHashAdapter(hashCode)
     }

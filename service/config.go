@@ -128,8 +128,8 @@ func parseCfg() error {
         invokeTimeout += "ms"
     }
     cliCfg.invokeTimeout = util.AtoDuration(invokeTimeout)
-    endpointRefreshInterval := cliconfig.GetCfg("refresh-endpoint-interval", "60s")
-    if endpointRefreshInterval != "60s" {
+    endpointRefreshInterval := cliconfig.GetCfg("refresh-endpoint-interval", "10s")
+    if endpointRefreshInterval != "10s" {
         endpointRefreshInterval += "ms"
     }
     cliCfg.endpointRefreshInterval = util.AtoDuration(endpointRefreshInterval)
