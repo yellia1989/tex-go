@@ -64,10 +64,10 @@ func parseCfg() error {
     cfg.ParseFile(configFile)
 
     // 解析服务器配置
-    svrCfg := cfg.GetSubCfg("tex/application/server")
+    svrCfg := cfg.GetSubCfg("mfw/application/server")
     App = svrCfg.GetCfg("app", "app")
     Server = svrCfg.GetCfg("server", "server")
-    Zone = cfg.GetCfg("tex/application/setdivision", "")
+    Zone = cfg.GetCfg("mfw/application/setdivision", "")
 
     // 日志相关
     defLogger := log.GetDefaultLogger()
@@ -86,7 +86,7 @@ func parseCfg() error {
         defLogger.SetFileRoller(logpath, lognum, int(logsize))
     }
     log.SetLevel(log.StringToLevel(svrCfg.GetCfg("loglevel", "INFO")))
-    log.SetFrameworkLevel(log.StringToLevel(svrCfg.GetCfg("framework-loglevel", "DEBUG")))
+    log.SetFrameworkLevel(log.StringToLevel(svrCfg.GetCfg("framework-loglevel", "INFO")))
 
     // service相关
     i := 1
@@ -104,12 +104,12 @@ func parseCfg() error {
             return err
         }
 
-        objCfg.isTex = cfg.GetCfg("protocol", "tex") == "tex"
+        objCfg.isTex = cfg.GetCfg("protocol", "mfw") == "mfw"
         objCfg.threads = cfg.GetInt("threads", 1)
         objCfg.maxconns = cfg.GetInt("maxconns", 1024)
         objCfg.queuecap = cfg.GetInt("queuecap", 10240)
-        queuetimeout := cfg.GetCfg("queuetimeout", "500ms")
-        if queuetimeout != "500ms" {
+        queuetimeout := cfg.GetCfg("queuetimeout", "5000ms")
+        if queuetimeout != "5000ms" {
             queuetimeout += "ms"
         }
         objCfg.queuetimeout = util.AtoDuration(queuetimeout)
@@ -121,7 +121,7 @@ func parseCfg() error {
     }
 
     // 解析客户端配置
-    cliconfig := cfg.GetSubCfg("tex/application/client")
+    cliconfig := cfg.GetSubCfg("mfw/application/client")
     cliCfg.locator = cliconfig.GetCfg("locator", "")
     invokeTimeout := cliconfig.GetCfg("async-invoke-timeout", "5s")
     if invokeTimeout != "5s" {
