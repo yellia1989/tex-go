@@ -54,6 +54,7 @@ func startServer() (err error) {
             panic(fmt.Sprintf("service:%s can't find cfg", k))
         }
         
+        adapterName := k
         svr := net.NewSvr(&net.SvrCfg{
             Proto: cfg.endpoint.Proto,
             Address: cfg.endpoint.Address(),
@@ -64,8 +65,7 @@ func startServer() (err error) {
             IdleTimeout: cfg.endpoint.Idletimeout,
             TCPNoDelay: true,
             Heartbeat: func() {
-                adapterName := k
-                log.FDebug("heartbeat, adapter: %s", adapterName)
+                log.FDebugf("heartbeat, adapter: %s", adapterName)
                 if adapterName != "AdminObj" {
                     go nodeHelper.keepAlive(adapterName, false)
                 }
