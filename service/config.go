@@ -15,6 +15,7 @@ var (
     servicesCfg map[string]*serviceCfg
     cliCfg clientCfg
     configFile string
+    nodaemon int
 
     App     string
     Server  string
@@ -27,6 +28,7 @@ var (
 func init() {
     servicesCfg = make(map[string]*serviceCfg)
     flag.StringVar(&configFile, "config", "", "config file")
+    flag.IntVar(&nodaemon, "nodaemon", 1, "")
     flag.Usage = func () {
         fmt.Fprintf(os.Stderr, "Usage: %s --config file\n", os.Args[0])
         os.Exit(1)
