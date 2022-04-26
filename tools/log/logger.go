@@ -166,13 +166,13 @@ func GetFrameworkLevel() LogLevel {
 //StringToLevel turns string to LogLevel
 func StringToLevel(level string) LogLevel {
 	switch level {
-	case "DEBUG":
+	case "DEBUG","debug":
 		return DEBUG
-	case "INFO":
+	case "INFO","info":
 		return INFO
-	case "WARN":
+	case "WARN","warn":
 		return WARN
-	case "ERROR":
+	case "ERROR","error":
 		return ERROR
     default:
         panic("UNKNOWN")
