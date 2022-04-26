@@ -8,6 +8,7 @@ import (
     "time"
     "github.com/yellia1989/tex-go/tools/log"
     "github.com/yellia1989/tex-go/tools/util"
+    "github.com/yellia1989/tex-go/sdp/rpc"
 )
 
 var (
@@ -19,6 +20,8 @@ var (
     Server  string
     Zone    string
     loop_interval int
+    Node    string
+    Admin   string
 )
 
 func init() {
@@ -68,6 +71,8 @@ func parseCfg() error {
     App = svrCfg.GetCfg("app", "app")
     Server = svrCfg.GetCfg("server", "server")
     Zone = cfg.GetCfg("mfw/application/setdivision", "")
+    Node = svrCfg.GetCfg("node", "")
+    Admin = svrCfg.GetCfg("admin", "")
 
     // 日志相关
     defLogger := log.GetDefaultLogger()
@@ -118,6 +123,28 @@ func parseCfg() error {
         }
         servicesCfg[objCfg.service] = objCfg
         i++
+    }
+    if Admin != "" {
+        objCfg := &serviceCfg{}
+        objCfg.service = "AdminObj"
+
+        var err error
+        objCfg.endpoint, err = NewEndpoint(Admin)
+        if err != nil {
+            return err
+        }
+
+        objCfg.isTex = true
+        objCfg.threads = 1
+        objCfg.maxconns = 1024
+        objCfg.queuecap = 10240
+        queuetimeout :=  "5000ms"
+        objCfg.queuetimeout = util.AtoDuration(queuetimeout)
+        servicesCfg[objCfg.service] = objCfg
+
+        admin := new(rpc.Admin)
+        adminImpl := new(AdminServiceImpl)
+        AddService("AdminObj", admin, adminImpl)
     }
 
     // 解析客户端配置

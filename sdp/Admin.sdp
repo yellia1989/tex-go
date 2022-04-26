@@ -1,0 +1,10 @@
+module rpc
+{
+    interface Admin
+    {
+        void shutdown();
+
+        int notify(string sCmd, out string sResult);
+    };
+};
+

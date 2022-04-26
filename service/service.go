@@ -63,6 +63,12 @@ func startServer() (err error) {
             MaxConn: cfg.maxconns,
             IdleTimeout: cfg.endpoint.Idletimeout,
             TCPNoDelay: true,
+            Heartbeat: func() {
+                adapterName := k
+                if adapterName != "AdminObj" {
+                    go nodeHelper.keepAlive(adapterName, false)
+                }
+            },
         },&texSvrPkgHandle{
             name: k,
             service: v.service,

@@ -12,5 +12,8 @@ module protocol
         SDPPROXYCONNECTERR     = -999996,
         SDPSERVEROVERLOAD      = -999997,
         SDPADAPTERNULL         = -999998,
+
+        MFW_UNKNOWN = -900001,
+        MFW_INVALID_PARAM = -900002,
     };
 };

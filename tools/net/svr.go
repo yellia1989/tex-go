@@ -22,6 +22,8 @@ type netHandle interface {
     Run()
 }
 
+type heartbeatHandle func()
+
 // 服务器配置
 type SvrCfg struct {
     Proto string // tcp,udp
@@ -39,6 +41,8 @@ type SvrCfg struct {
     TCPReadBuffer  int
     TCPWriteBuffer int
     TCPNoDelay     bool
+
+    Heartbeat heartbeatHandle // 心跳函数
 }
 
 // 连接
@@ -222,6 +226,21 @@ func (s *Svr) Run() {
     // 开启工作协程
     s.workPool = gpool.NewPool(s.cfg.WorkThread, s.cfg.WorkQueueCap)
     log.FDebugf("work threads=%d cap=%d start", s.cfg.WorkThread, s.cfg.WorkQueueCap)
+    var heartbeat chan struct{}
+    if s.cfg.Heartbeat != nil {
+        log.FDebug("heartbeat thread start")
+        heartbeat = make(chan struct{})
+        go func() {
+            ticker := time.NewTicker(time.Second * 3)
+            defer ticker.Stop()
+            for atomic.LoadInt32(&s.close) == 0 {
+                select {
+                case <-ticker.C:
+                    s.workPool.JobQueue <- gpool.Job(s.cfg.Heartbeat)
+                }
+            }
+        }()
+    }
 
     log.FDebug("net thread start")
     network := make(chan struct{})
@@ -232,6 +251,11 @@ func (s *Svr) Run() {
     }()
     <-network
     log.FDebug("net thread stop")
+
+    if heartbeat != nil {
+        <-heartbeat
+        log.FDebug("heartbeat thread stop")
+    }
 
     // 停止工作协程
     s.workPool.Release()

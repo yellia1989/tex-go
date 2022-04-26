@@ -1,0 +1,28 @@
+module rpc
+{
+    struct PatchRequest
+    {
+        0   optional string sFileName;
+        1   optional string sMd5;
+        2   optional unsigned int iFileSize;
+    };
+
+    struct PatchPercent
+    {
+        0   optional unsigned int iPercent;
+        1   optional bool bSuccess;
+        2   optional string sResult;
+    };
+
+    interface Node
+    {
+        int stop(string sApp, string sServer, string sDivision, out string sResult);
+        int start(string sApp, string sServer, string sDivsioin, out string sResult);
+        int restart(string sApp, string sServer, string sDivision, out string sResult);
+        int patch(string sApp, string sServer, string sDivision, PatchRequest patchReq, out string sResult);
+        int getPatchPercent(string sApp, string sServer, string sDivision, out PatchPercent patchPercent);
+        int notify(string sApp, string sServer, string sDivision, string sCmd, out string sResult);
+
+        int keepAlive(string sApp, string sServer, string sDivision, unsigned int iPid, string sAdapterName, bool bIniting);
+    };
+};

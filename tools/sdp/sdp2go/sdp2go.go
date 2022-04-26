@@ -476,9 +476,7 @@ func (s *` + v.name + `) SetTimeout(timeout time.Duration) {
         buff := bytes.Buffer{}
         buff.WriteString(f.name + "(")
         // 参数
-        if len(f.args) != 0 {
-            buff.WriteString("ctx context.Context")
-        }
+        buff.WriteString("ctx context.Context")
         for _, arg := range f.args {
             buff.WriteString(", " + arg.name + " ")
             out := ""

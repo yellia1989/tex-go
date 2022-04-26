@@ -17,6 +17,8 @@ type app interface {
 
 var (
     comm *Communicator
+    nodeHelper NodeHelper
+    quit chan struct{}
 )
 
 func Run(svr app) {
@@ -38,7 +40,7 @@ func Run(svr app) {
 
     // 初始化服务器
     if err := initServer(); err != nil {
-        log.FErrorf("init client err:%s", err.Error())
+        log.FErrorf("init server err:%s", err.Error())
         return
     }
 
@@ -48,11 +50,28 @@ func Run(svr app) {
         return
     }
 
+    // 开启协程定时通知node正在启动中防止被判断为心跳超时
+    initdone := make(chan struct{})
+    go func () {
+        ticker := time.NewTicker(time.Second * 2)
+        defer ticker.Stop()
+        for {
+            select {
+                case <-initdone :
+                    go nodeHelper.keepAlive("", false)
+                    return
+                case <-ticker.C :
+                    go nodeHelper.keepAlive("", true)
+            }
+        }
+    }()
     // 初始化应用程序
     if err := svr.Init(); err != nil {
+        initdone <- struct{}{}
         log.FErrorf("init server err:%s", err.Error())
         return
     }
+    initdone <- struct{}{}
 
     // 监听信号
     c := make(chan os.Signal)
@@ -64,6 +83,8 @@ func Run(svr app) {
     for run {
         select {
         case <-c :
+            run = false
+        case <-quit :
             run = false
         case <-ticker.C :
             svr.Loop()
@@ -90,7 +111,10 @@ func initClient() error {
 }
 
 func initServer() error {
-    // TODO
+    if err := nodeHelper.init(Node); err != nil {
+        return err
+    }
+
     return nil
 }
 
