@@ -239,7 +239,7 @@ func (s *Svr) Run() {
                     s.workPool.JobQueue <- gpool.Job(s.cfg.Heartbeat)
                 }
             }
-            heartheat <- struct{}{}
+            heartbeat <- struct{}{}
         }()
     }
 
