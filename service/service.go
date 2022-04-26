@@ -65,7 +65,6 @@ func startServer() (err error) {
             IdleTimeout: cfg.endpoint.Idletimeout,
             TCPNoDelay: true,
             Heartbeat: func() {
-                log.FDebugf("heartbeat, adapter: %s", adapterName)
                 if adapterName != "AdminObj" {
                     go nodeHelper.keepAlive(adapterName, false)
                 }
