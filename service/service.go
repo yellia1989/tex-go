@@ -65,6 +65,7 @@ func startServer() (err error) {
             TCPNoDelay: true,
             Heartbeat: func() {
                 adapterName := k
+                log.FDebug("heartbeat, adapter: %s", adapterName)
                 if adapterName != "AdminObj" {
                     go nodeHelper.keepAlive(adapterName, false)
                 }
