@@ -211,6 +211,7 @@ func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) *Svr {
 
     s := &Svr{cfg: cfg, pkgHandle: pkgHandle}
     s.conns = make(map[uint32]*Conn)
+    s.close = make(chan struct{})
 
     if s.cfg.Proto == "tcp" {
         s.netHandle = &tcpHandle{svr: s}
