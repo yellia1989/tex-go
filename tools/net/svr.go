@@ -242,16 +242,31 @@ func (s *Svr) isClose() bool {
 }
 
 func (s *Svr) Run() {
+    defer func() {
+        log.FDebugf("service:%s stopped", s.cfg.Name)
+    }()
+
+    log.FDebugf("service:%s starting", s.cfg.Name)
+
     // 开启工作协程
     s.workPool = gpool.NewPool(s.cfg.WorkThread, s.cfg.WorkQueueCap)
-    log.FDebugf("work threads=%d cap=%d start", s.cfg.WorkThread, s.cfg.WorkQueueCap)
+    // 停止工作协程
+    defer func() {
+        s.workPool.Release()
+        log.FDebugf("service:%s work threads stop", s.cfg.Name)
+    }()
+    log.FDebugf("service:%s work threads=%d cap=%d start", s.cfg.WorkThread, s.cfg.WorkQueueCap, s.cfg.Name)
+
     var heartbeat chan struct{}
     if s.cfg.Heartbeat != nil {
-        log.FDebug("heartbeat thread start")
         heartbeat = make(chan struct{})
         go func() {
             ticker := time.NewTicker(time.Second * 3)
-            defer ticker.Stop()
+            defer func() {
+                ticker.Stop()
+                log.FDebugf("service:%s heartbeat thread stop", s.cfg.Name)
+            }()
+            log.FDebugf("service:%s heartbeat thread start", s.cfg.Name)
             for {
                 select {
                 case <-ticker.C:
@@ -264,35 +279,32 @@ func (s *Svr) Run() {
         }()
     }
 
-    log.FDebug("net thread start")
     network := make(chan struct{})
     go func () {
+        defer func() {
+            log.FDebugf("service:%s net thread stop", s.cfg.Name)
+        }()
+        log.FDebugf("service:%s net thread start", s.cfg.Name)
         // 开启网络监听
         s.netHandle.Run()
         network <- struct{}{}
     }()
     <-network
-    log.FDebug("net thread stop")
 
     if heartbeat != nil {
         <-heartbeat
-        log.FDebug("heartbeat thread stop")
     }
-
-    // 停止工作协程
-    s.workPool.Release()
-    log.FDebug("work threads stop")
 }
 
 func (s *Svr) Stop() {
-    log.FDebugf("service: %s stop...", s.cfg.Name)
+    log.FDebugf("service:%s stop...", s.cfg.Name)
 
     if !atomic.CompareAndSwapInt32(&s.isclose, 0, 1) {
         return
     }
 
     // 等待所有连接关闭
-    log.FDebugf("service: %s, begin to stop all connection", s.cfg.Name)
+    log.FDebugf("service:%s, begin to stop all connection", s.cfg.Name)
     stop := make(chan struct{})
     go func() {
         ticker := time.NewTicker(time.Millisecond * 100)
@@ -313,7 +325,7 @@ func (s *Svr) Stop() {
         }
     }()
     <-stop
-    log.FDebugf("service: %s, all connection has been stopped", s.cfg.Name)
+    log.FDebugf("service:%s, all connection has been stopped", s.cfg.Name)
 
     close(s.close)
 }

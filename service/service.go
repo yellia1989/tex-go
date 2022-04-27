@@ -4,9 +4,7 @@ import (
     "sync"
     "fmt"
     "context"
-    "time"
     "github.com/yellia1989/tex-go/tools/net"
-    "github.com/yellia1989/tex-go/tools/log"
     "github.com/yellia1989/tex-go/sdp/protocol"
 )
 
@@ -47,7 +45,6 @@ func startService() (err error) {
         }
     }()
     
-    ch := make(chan string)
     for k, v := range services {
         cfg, ok := servicesCfg[k]
         if !ok {
@@ -78,20 +75,10 @@ func startService() (err error) {
         svrRun[k] = svr
         svrDone.Add(1)
 
-        go func(service string) {
-            log.FDebugf("service:%s start", service)
+        go func() {
+            defer svrDone.Done()
             svr.Run()
-            log.FDebugf("service:%s stop", service)
-            svrDone.Done()
-            ch <- service
-        }(k)
-    }
-
-    // 等待2秒所有服务器监听成功
-    select {
-    case name := <-ch:
-        err = fmt.Errorf("start service:%s failed", name)
-    case <-time.After(time.Second * 2):
+        }()
     }
 
     return
