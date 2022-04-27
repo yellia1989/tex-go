@@ -102,7 +102,7 @@ func (c *Conn) doRead() {
     c.idleTime = time.Now()
     tmpbuf := make([]byte, 1024*4)
     var pkgbuf []byte
-    for atomic.LoadInt32(&c.svr.close) == 0 {
+    for atomic.LoadInt32(&c.svr.isclose) == 0 {
         if c.svr.cfg.IdleTimeout != 0 {
             if err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
                 log.FErrorf("conn:%d set read timeout err:%s", err.Error())
@@ -187,7 +187,8 @@ func (c *Conn) doWrite() {
 type Svr struct {
     cfg *SvrCfg // 配置
     pkgHandle SvrPkgHandle // 包处理
-    close int32 // 服务器是否关闭
+    isclose int32 // 服务器是否关闭
+    close chan struct{}
 
     netHandle netHandle // 网络字节流处理
     workPool *gpool.Pool // 工作线程
@@ -233,13 +234,15 @@ func (s *Svr) Run() {
         go func() {
             ticker := time.NewTicker(time.Second * 3)
             defer ticker.Stop()
-            for atomic.LoadInt32(&s.close) == 0 {
+            for {
                 select {
                 case <-ticker.C:
                     s.workPool.JobQueue <- gpool.Job(s.cfg.Heartbeat)
+                case <-s.close:
+                    heartbeat <- struct{}{}
+                    return
                 }
             }
-            heartbeat <- struct{}{}
         }()
     }
 
@@ -264,9 +267,10 @@ func (s *Svr) Run() {
 }
 
 func (s *Svr) Stop() {
-    if !atomic.CompareAndSwapInt32(&s.close, 0, 1) {
+    if !atomic.CompareAndSwapInt32(&s.isclose, 0, 1) {
         return
     }
+    close(s.close)
 }
 
 func (s *Svr) delConnection(id uint32) {

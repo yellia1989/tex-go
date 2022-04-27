@@ -32,7 +32,7 @@ func (h *tcpHandle) Run() {
     }
     log.FDebugf("start listen on:%s", addr)
 
-    for atomic.LoadInt32(&h.svr.close) == 0 {
+    for atomic.LoadInt32(&h.svr.isclose) == 0 {
         if err := h.lis.SetDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
             log.FErrorf("set accept timeout failed:%s", err.Error())
             return
