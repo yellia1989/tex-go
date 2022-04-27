@@ -56,6 +56,7 @@ func startService() (err error) {
         
         adapterName := k
         svr := net.NewSvr(&net.SvrCfg{
+            Name: adapterName,
             Proto: cfg.endpoint.Proto,
             Address: cfg.endpoint.Address(),
             WorkThread: cfg.threads,

@@ -26,6 +26,7 @@ type heartbeatHandle func()
 
 // 服务器配置
 type SvrCfg struct {
+    Name string
     Proto string // tcp,udp
     Address string // listen address
 
@@ -64,8 +65,8 @@ func (c *Conn) Send(pkg []byte) (err error) {
         return fmt.Errorf("empty or nil pkg")
     }
 
-    if atomic.LoadInt32(&c.close) == 1 {
-        return fmt.Errorf("conn has been closed")
+    if c.isClose() {
+        return fmt.Errorf("conn: %u has been closed", c.ID)
     }
 
     // writech的大小应该根据下面情况综合考虑来设置
@@ -76,12 +77,16 @@ func (c *Conn) Send(pkg []byte) (err error) {
 }
 
 func (c *Conn) SafeClose() {
-    if atomic.LoadInt32(&c.close) == 1 {
+    if c.isClose() {
         return
     }
 
     pkg := make([]byte, 0)
     c.writech <- pkg
+}
+
+func (c *Conn) isClose() bool {
+    return atomic.LoadInt32(&c.close) == 1 
 }
 
 func (c *Conn) Close() {
@@ -102,15 +107,19 @@ func (c *Conn) doRead() {
     c.idleTime = time.Now()
     tmpbuf := make([]byte, 1024*4)
     var pkgbuf []byte
-    for {
+    for !c.isClose() {
         if c.svr.cfg.IdleTimeout != 0 {
-            if err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
+            if err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond*50)); err != nil {
                 log.FErrorf("conn:%d set read timeout err:%s", err.Error())
                 return
             }
         }
         n, err := c.conn.Read(tmpbuf)
         if err != nil {
+            if c.isClose() {
+                return
+            }
+
             if isTimeoutErr(err) && c.svr.cfg.IdleTimeout != 0 {
                 // 不活跃直接关闭
                 if c.idleTime.Add(c.svr.cfg.IdleTimeout).Before(time.Now()) {
@@ -277,6 +286,7 @@ func (s *Svr) Stop() {
     }
 
     // 等待所有连接关闭
+    log.FDebugf("service: %s, begin to stop all connection", s.cfg.Name)
     stop := make(chan struct{})
     go func() {
         ticker := time.NewTicker(time.Millisecond * 100)
@@ -297,6 +307,7 @@ func (s *Svr) Stop() {
         }
     }()
     <-stop
+    log.FDebugf("service: %s, all connection has been stopped", s.cfg.Name)
 
     close(s.close)
 }
@@ -319,6 +330,11 @@ func (s *Svr) closeConnection(id uint32) {
 }
 
 func (s *Svr) addConnection(c net.Conn) {
+    if s.isClose() {
+        c.Close()
+        return
+    }
+
     s.mu.Lock()
     connNum := len(s.conns)
     if connNum >= s.cfg.MaxConn {
