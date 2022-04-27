@@ -299,7 +299,7 @@ func (epmgr *endpointManager) Close() {
     epmgr.mu.Lock()
     defer epmgr.mu.Unlock()
 
-    for k, v := range epmgr.mAdapter {
+    for _,v := range epmgr.mAdapter {
         v.Close() 
     }
     if epmgr.close != nil {
