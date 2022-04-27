@@ -302,7 +302,7 @@ func (epmgr *endpointManager) Close() {
     for k, v := range epmgr.mAdapter {
         v.Close() 
     }
-    if epmgr.close {
+    if epmgr.close != nil {
         epmgr.close <- struct{}{}
     }
 }
