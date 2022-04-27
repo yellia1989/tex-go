@@ -313,12 +313,19 @@ func (s *Svr) Stop() {
             select {
             case <-ticker.C:
                 s.mu.Lock()
-                defer s.mu.Unlock()
                 if len(s.conns) == 0 {
+                    s.mu.Unlock()
                     stop <- struct{}{}
                     return
                 }
+                conns := make([]*Conn, len(s.conns), len(s.conns))
+                i := 0
                 for _,conn := range s.conns {
+                    conns[i] = conn
+                    i += 1
+                }
+                s.mu.Unlock()
+                for _,conn := range conns {
                     conn.SafeClose()
                 }
             }
@@ -378,6 +385,7 @@ func (s *Svr) addConnection(c net.Conn) {
     conn.done.Add(2)
     go func() {
         conn.done.Wait()
+        log.FDebugf("conn:%d exit", conn.ID)
         s.delConnection(conn.ID)
     }()
 
