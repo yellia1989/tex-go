@@ -39,7 +39,7 @@ func AddService(obj string, service Service, serviceImpl interface{}) {
     services[obj] = serviceDetail{service: service, serviceImpl: serviceImpl}
 }
 
-func startServer() (err error) {
+func startService() (err error) {
     defer func() {
         perr := recover()
         if perr != nil {
@@ -96,7 +96,7 @@ func startServer() (err error) {
     return
 }
 
-func stopServer() {
+func stopService() {
     for _, svr := range svrRun {
         svr.Stop()
     }

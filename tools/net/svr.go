@@ -102,7 +102,7 @@ func (c *Conn) doRead() {
     c.idleTime = time.Now()
     tmpbuf := make([]byte, 1024*4)
     var pkgbuf []byte
-    for atomic.LoadInt32(&c.svr.isclose) == 0 {
+    for {
         if c.svr.cfg.IdleTimeout != 0 {
             if err := c.conn.SetReadDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
                 log.FErrorf("conn:%d set read timeout err:%s", err.Error())
@@ -224,6 +224,10 @@ func NewSvr(cfg *SvrCfg, pkgHandle SvrPkgHandle) *Svr {
     return s
 }
 
+func (s *Svr) isClose() bool {
+    return atomic.LoadInt32(&s.isclose) == 1
+}
+
 func (s *Svr) Run() {
     // 开启工作协程
     s.workPool = gpool.NewPool(s.cfg.WorkThread, s.cfg.WorkQueueCap)
@@ -271,6 +275,29 @@ func (s *Svr) Stop() {
     if !atomic.CompareAndSwapInt32(&s.isclose, 0, 1) {
         return
     }
+
+    // 等待所有连接关闭
+    stop := make(chan struct{})
+    go func() {
+        ticker := time.NewTicker(time.Millisecond * 100)
+        defer ticker.Stop()
+        for {
+            select {
+            case <-ticker.C:
+                s.mu.Lock()
+                defer s.mu.Unlock()
+                if len(s.conns) == 0 {
+                    stop <- struct{}{}
+                    return
+                }
+                for _,conn := range s.conns {
+                    conn.SafeClose()
+                }
+            }
+        }
+    }()
+    <-stop
+
     close(s.close)
 }
 

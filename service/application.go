@@ -26,6 +26,8 @@ func Run(svr app) {
         log.FlushLogger()
     }()
 
+    log.FDebug("server start...")
+
     // 初始化配置
     if err := parseCfg(); err != nil {
         log.FErrorf("parse cfg err:%s", err.Error())
@@ -41,12 +43,11 @@ func Run(svr app) {
     // 初始化服务器
     if err := initServer(); err != nil {
         log.FErrorf("init server err:%s", err.Error())
-        return
-    }
+        return }
 
     // 开启服务器
-    if err := startServer(); err != nil {
-        log.FErrorf("start server err:%s", err.Error())
+    if err := startService(); err != nil {
+        log.FErrorf("start service err:%s", err.Error())
         return
     }
 
@@ -68,7 +69,7 @@ func Run(svr app) {
     // 初始化应用程序
     if err := svr.Init(); err != nil {
         initdone <- struct{}{}
-        log.FErrorf("init server err:%s", err.Error())
+        log.FErrorf("server init err:%s", err.Error())
         return
     }
     initdone <- struct{}{}
@@ -76,6 +77,8 @@ func Run(svr app) {
     // 监听信号
     c := make(chan os.Signal)
     signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+
+    log.FDebug("server started")
 
     // 启动主循环等待服务器结束
     ticker := time.NewTicker(time.Second)
@@ -91,13 +94,15 @@ func Run(svr app) {
         }
     }
     // 结束服务器
-    stopServer()
+    stopService()
 
     // 结束应用程序
     svr.Terminate()
 
     // 结束客户端
     stopClient()
+
+    log.FDebug("server stopped")
 }
 
 func StringToProxy(name string, proxy ServicePrx) error {
