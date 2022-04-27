@@ -281,6 +281,8 @@ func (s *Svr) Run() {
 }
 
 func (s *Svr) Stop() {
+    log.FDebugf("service: %s stop...", s.cfg.Name)
+
     if !atomic.CompareAndSwapInt32(&s.isclose, 0, 1) {
         return
     }

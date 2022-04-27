@@ -26,6 +26,8 @@ func Run(svr app) {
         log.FlushLogger()
     }()
 
+    quit = make(chan struct{})
+
     log.FDebug("server start...")
 
     // 初始化配置
@@ -82,6 +84,7 @@ func Run(svr app) {
 
     // 启动主循环等待服务器结束
     ticker := time.NewTicker(time.Second)
+    defer ticker.Stop()
     run := true
     for run {
         select {

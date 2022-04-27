@@ -17,7 +17,7 @@ func (admin *AdminServiceImpl) Shutdown(ctx context.Context) error {
 }
 
 func (admin *AdminServiceImpl) Notify(ctx context.Context, sCmd string, sResult *string) (int32, error) {
-    log.FDebug("notify cmd: %s", sCmd)
+    log.FDebugf("notify cmd: %s", sCmd)
 
     if sCmd == "" {
         return protocol.MFW_INVALID_PARAM, nil
