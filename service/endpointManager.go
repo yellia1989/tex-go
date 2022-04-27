@@ -301,7 +301,8 @@ func (epmgr *endpointManager) Close() {
 
     for k, v := range epmgr.mAdapter {
         v.Close() 
-        log.FDebugf("adapter:%s has been closed", &k)
     }
-    epmgr.close <- struct{}{}
+    if epmgr.close {
+        epmgr.close <- struct{}{}
+    }
 }
