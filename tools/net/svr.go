@@ -83,8 +83,6 @@ func (c *Conn) SafeClose() {
 
     pkg := make([]byte, 0)
     c.writech <- pkg
-
-    log.FDebugf("conn:%d safe close", c.ID)
 }
 
 func (c *Conn) isClose() bool {
@@ -102,7 +100,6 @@ func (c *Conn) Close() {
 
 func (c *Conn) doRead() {
     defer func() {
-        log.FDebugf("conn:%d close read", c.ID)
         c.Close()
         c.done.Done()
     }()
@@ -165,7 +162,6 @@ func (c *Conn) doRead() {
 
 func (c *Conn) doWrite() {
     defer func() {
-        log.FDebugf("conn:%d close write", c.ID)
         c.Close()
         c.done.Done()
     }()
@@ -385,7 +381,6 @@ func (s *Svr) addConnection(c net.Conn) {
     conn.done.Add(2)
     go func() {
         conn.done.Wait()
-        log.FDebugf("conn:%d exit", conn.ID)
         s.delConnection(conn.ID)
     }()
 
