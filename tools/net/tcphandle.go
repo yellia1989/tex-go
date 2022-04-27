@@ -31,15 +31,14 @@ func (h *tcpHandle) Run() {
     }
     log.FDebugf("start listen on:%s", addr)
 
-    for {
-        if err := h.lis.SetDeadline(time.Now().Add(time.Millisecond*500)); err != nil {
+    for !h.svr.isClose() {
+        if err := h.lis.SetDeadline(time.Now().Add(time.Millisecond*10)); err != nil {
             log.FErrorf("set accept timeout failed:%s", err.Error())
             return
         }
         conn, err := h.lis.AcceptTCP()
         if err != nil {
-            if isTimeoutErr(err) {
-            } else {
+            if !isTimeoutErr(err) {
                 log.FErrorf("accept error:%s", err.Error())    
             }
             continue
