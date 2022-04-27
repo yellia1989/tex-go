@@ -255,7 +255,7 @@ func (s *Svr) Run() {
         s.workPool.Release()
         log.FDebugf("service:%s work threads stop", s.cfg.Name)
     }()
-    log.FDebugf("service:%s work threads=%d cap=%d start", s.cfg.WorkThread, s.cfg.WorkQueueCap, s.cfg.Name)
+    log.FDebugf("service:%s work threads=%d cap=%d start", s.cfg.Name, s.cfg.WorkThread, s.cfg.WorkQueueCap)
 
     var heartbeat chan struct{}
     if s.cfg.Heartbeat != nil {

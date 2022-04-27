@@ -50,6 +50,6 @@ func (comm *Communicator) Close() {
     defer comm.mu.Unlock()
 
     for _, v := range comm.mPrx {
-        v.close()
+        v.Close()
     }
 }

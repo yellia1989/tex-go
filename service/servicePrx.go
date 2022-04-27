@@ -53,8 +53,8 @@ func (impl *servicePrxImpl) SetTimeout(timeout time.Duration) {
     impl.invokeTimeout = uint32(timeout.Milliseconds())
 }
 
-func (impl *servicePrxImpl) close() {
-    impl.epmgr.close()
+func (impl *servicePrxImpl) Close() {
+    impl.epmgr.Close()
 }
 
 func newPrxImpl(name string, comm *Communicator) (*servicePrxImpl) {

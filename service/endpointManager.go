@@ -24,7 +24,7 @@ type endpointManager struct {
     refreshInterval time.Duration
     direct bool
     query *rpc.Query
-    done chan bool
+    close chan struct{}
 
     mu sync.Mutex
     mAdapter map[Endpoint]*adapterProxy
@@ -53,6 +53,7 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager) {
         for _, ep := range epmgr.vEndpoint {
             if adapter, err := newAdapter(ep); err == nil {
                 epmgr.mAdapter[*ep] = adapter
+                go adapter.checkActive()
             }
         }
     } else {
@@ -63,17 +64,17 @@ func newEpMgr(objName string, comm *Communicator) (*endpointManager) {
             epmgr.sDivision = objName[p+1:]
         }
         epmgr.query = new(rpc.Query)
-        epmgr.done = make(chan bool)
+        epmgr.close = make(chan struct{})
         comm.StringToProxy(comm.sLocator, epmgr.query)
 
         go func() {
             ticker := time.NewTicker(epmgr.refreshInterval)
+            defer ticker.Stop()
             for {
                 select {
                 case <-ticker.C:
                     epmgr.refreshEndpoint()
-                case <-epmgr.done:
-                    ticker.Stop()
+                case <-epmgr.close:
                     return
                 }
             }
@@ -154,7 +155,7 @@ func (epmgr *endpointManager) refreshEndpoint() {
     epmgr.mu.Unlock()
 
     for _, adapter := range closeAdapter {
-        adapter.close()
+        adapter.Close()
     }
 }
 
@@ -294,10 +295,13 @@ func (epmgr *endpointManager) selectNextAdapter() (*adapterProxy, error) {
     return nil, fmt.Errorf("no active adapter for obj:%s", epmgr.sObjName)
 }
 
-func (epmgr *endpointManager) close() {
+func (epmgr *endpointManager) Close() {
+    epmgr.mu.Lock()
+    defer epmgr.mu.Unlock()
+
     for k, v := range epmgr.mAdapter {
-        v.close() 
+        v.Close() 
         log.FDebugf("adapter:%s has been closed", &k)
     }
-    epmgr.done <- true
+    epmgr.close <- struct{}{}
 }

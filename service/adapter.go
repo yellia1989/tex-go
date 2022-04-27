@@ -26,7 +26,7 @@ const (
 type adapterProxy struct {
     ep *Endpoint
     cli *net.Cli
-    done chan bool // 关闭通道
+    close chan struct{} // 关闭通道
 
     mu sync.Mutex
     reqQueueLen int // 请求队列长度
@@ -174,8 +174,9 @@ func (adapter *adapterProxy) checkActive() {
 
     for {
         select {
-        case <-adapter.done:
-            break
+        case <-adapter.close:
+            adapter.close <- struct{}{}
+            return
         case <-loop.C:
             // 持续失败达到一定次数后强制关闭连接
             consfailTotal := atomic.LoadUint32(&adapter.consfailTotal)
@@ -196,9 +197,10 @@ func (adapter *adapterProxy) checkActive() {
     }
 }
 
-func (adapter *adapterProxy) close() {
+func (adapter *adapterProxy) Close() {
     adapter.setInactive(0)
-    adapter.done <- true
+    adapter.close <- struct{}{}
+    <-adapter.close
 }
 
 func (adapter *adapterProxy) setInactive(connfailed int32) {
@@ -213,7 +215,7 @@ func (adapter *adapterProxy) setInactive(connfailed int32) {
 }
 
 func newAdapter(ep *Endpoint) (*adapterProxy, error) {
-    adapter := &adapterProxy{active: 1, ep: ep, done: make(chan bool)}
+    adapter := &adapterProxy{active: 1, ep: ep, close: make(chan struct{})}
 
     address := ep.IP + ":" + strconv.Itoa(ep.Port)
     adapter.cli = net.NewCli(address,
